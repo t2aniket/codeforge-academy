@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "@xterm/xterm/css/xterm.css";
+
+:root {
+  --background: 180 33% 98%;
+  --foreground: 202 70% 7%;
+  --card: 0 0% 100%;
+  --card-foreground: 202 70% 7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 202 70% 7%;
+  --primary: 175 78% 31%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 45 95% 58%;
+  --secondary-foreground: 202 70% 7%;
+  --muted: 185 22% 92%;
+  --muted-foreground: 201 18% 36%;
+  --accent: 14 90% 61%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 76% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 188 24% 84%;
+  --input: 188 24% 84%;
+  --ring: 175 78% 31%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 200 55% 6%;
+  --foreground: 180 35% 96%;
+  --card: 200 45% 9%;
+  --card-foreground: 180 35% 96%;
+  --popover: 200 45% 9%;
+  --popover-foreground: 180 35% 96%;
+  --primary: 174 72% 45%;
+  --primary-foreground: 200 55% 6%;
+  --secondary: 45 95% 58%;
+  --secondary-foreground: 202 70% 7%;
+  --muted: 198 35% 15%;
+  --muted-foreground: 188 18% 70%;
+  --accent: 14 90% 61%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 195 28% 20%;
+  --input: 195 28% 20%;
+  --ring: 174 72% 45%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 34rem),
+    radial-gradient(circle at top right, rgba(251, 146, 60, 0.12), transparent 30rem),
+    hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+.noise {
+  background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.prose-codeforge {
+  @apply max-w-none text-foreground;
+}
+
+.prose-codeforge h1,
+.prose-codeforge h2,
+.prose-codeforge h3 {
+  @apply scroll-m-20 font-semibold tracking-normal;
+}
+
+.prose-codeforge h1 {
+  @apply text-3xl;
+}
+
+.prose-codeforge h2 {
+  @apply mt-9 text-2xl;
+}
+
+.prose-codeforge h3 {
+  @apply mt-7 text-xl;
+}
+
+.prose-codeforge p,
+.prose-codeforge li {
+  @apply leading-8 text-muted-foreground;
+}
+
+.prose-codeforge pre {
+  @apply overflow-x-auto rounded-md border bg-slate-950 p-4 text-sm text-slate-100;
+}
+
+.prose-codeforge code {
+  @apply rounded bg-muted px-1.5 py-0.5 text-sm text-foreground;
+}
+
+.prose-codeforge pre code {
+  @apply bg-transparent p-0 text-slate-100;
+}
+
+.prose-codeforge a {
+  @apply font-medium text-primary underline-offset-4 hover:underline;
+}
+
+.terminal-frame .xterm {
+  padding: 16px;
+}
