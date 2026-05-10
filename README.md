@@ -93,22 +93,23 @@ To add Kubernetes, AWS CLI, Terraform, or a security lab:
 4. Add the lab to `labSummaries` in `lib/seed-data.ts`.
 5. Link lessons to it through the Admin Panel by storing the lab id in lesson `lab` JSON.
 
-The shared workspace already provides Monaco, xterm.js, dashboards, guided commands, Pyodide Python execution, JavaScript execution, SQL feedback, and session traces.
+The shared workspace already provides Monaco, xterm.js, dashboards, guided commands, Pyodide Python execution, JavaScript/TypeScript execution, base64 WebAssembly module execution, SQL feedback, autosaved sessions, starter loading, and session traces.
 
 ## Browser runtime adapters
 
-The lab registry supports language/version metadata for JavaScript, TypeScript, Python, SQL, Java, Dart, C++, Rust, Go, Ruby, PHP, Kotlin, and Swift.
+The lab registry supports language/version metadata for JavaScript, TypeScript, Python, SQL, WebAssembly, Java, Dart, C++, Rust, Go, Ruby, PHP, Kotlin, Swift, Dockerfile, and YAML.
 
 Current executable browser paths:
 
 - JavaScript and TypeScript-style snippets run in the browser sandbox.
 - Python runs through Pyodide.
 - SQL runs through the CodeForge in-browser SQL simulator.
+- WebAssembly accepts base64-encoded `.wasm` modules, instantiates them in the browser, and calls an exported `run` or `main` function when present.
 
 Adapter-ready paths:
 
 - Java, Dart, C++, Rust, Go, Ruby, PHP, Kotlin, and Swift are modeled in the UI and session layer, but require adding browser runtime assets before real execution.
-- Add actual runtime loaders behind `components/labs/lab-workspace.tsx` or split per-language adapters under `lib/labs`.
+- Add actual runtime loaders in `lib/labs/runtime-adapters.ts`. The shared contract returns `stdout`, `stderr`, execution logs, variables, and a runtime mode, so the workspace UI does not need to be rewritten.
 - Keep all execution browser-only. Do not send learner code to the server.
 
 ## Deployment to Vercel
@@ -118,7 +119,7 @@ Adapter-ready paths:
 3. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `ALLOW_DEMO_ADMIN=false`.
 4. Deploy.
 
-Because all code and lab execution is browser-side simulation or Pyodide runtime execution, no untrusted user code is executed on the server.
+Because all code and lab execution is browser-side simulation, native browser execution, WebAssembly, or Pyodide runtime execution, no untrusted user code is executed on the server.
 
 ## Notes for production hardening
 

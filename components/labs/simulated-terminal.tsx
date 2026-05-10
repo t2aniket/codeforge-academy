@@ -27,8 +27,18 @@ export function SimulatedTerminal({
     const fit = new FitAddon();
     terminal.loadAddon(fit);
     terminal.open(hostRef.current);
-    fit.fit();
     termRef.current = terminal;
+
+    const safeFit = () => {
+      window.requestAnimationFrame(() => {
+        try {
+          fit.fit();
+        } catch {
+          // xterm can report missing dimensions before the host receives layout.
+        }
+      });
+    };
+    safeFit();
 
     let buffer = "";
     const writePrompt = () => terminal.write(`\r\n${prompt}$ `);
@@ -58,10 +68,13 @@ export function SimulatedTerminal({
       }
     });
 
-    const onResize = () => fit.fit();
+    const onResize = () => safeFit();
+    const resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(hostRef.current);
     window.addEventListener("resize", onResize);
     return () => {
       disposable.dispose();
+      resizeObserver.disconnect();
       window.removeEventListener("resize", onResize);
       terminal.dispose();
     };

@@ -39,6 +39,14 @@ export function getRuntimeCapability(language?: LabLanguage): RuntimeCapability 
     };
   }
 
+  if (language.runtime === "wasm") {
+    return {
+      label: "WebAssembly runtime",
+      description: "Instantiates base64-encoded WebAssembly modules directly in the browser and calls run or main when exported.",
+      executable: true
+    };
+  }
+
   if (language.runtime === "wasm-adapter") {
     return {
       label: "WASM adapter-ready",

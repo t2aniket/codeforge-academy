@@ -8,53 +8,13 @@ import { SimulatedTerminal } from "@/components/labs/simulated-terminal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { executeLabCode, extractRuntimeVariables, getLanguageStarter } from "@/lib/labs/runtime-adapters";
 import type { LabDefinition } from "@/lib/labs/registry";
 import { getRuntimeCapability } from "@/lib/labs/runtime-capabilities";
 import type { LabStarter } from "@/lib/types";
 
-declare global {
-  interface Window {
-    loadPyodide?: (options?: { indexURL?: string }) => Promise<{
-      runPythonAsync: (code: string) => Promise<unknown>;
-    }>;
-  }
-}
-
-async function loadBrowserPyodide() {
-  if (!window.loadPyodide) {
-    await new Promise<void>((resolve, reject) => {
-      const existing = document.querySelector<HTMLScriptElement>("script[data-pyodide]");
-      if (existing) {
-        existing.addEventListener("load", () => resolve(), { once: true });
-        existing.addEventListener("error", () => reject(new Error("Pyodide failed to load")), { once: true });
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js";
-      script.async = true;
-      script.dataset.pyodide = "true";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Pyodide failed to load"));
-      document.head.appendChild(script);
-    });
-  }
-
-  if (!window.loadPyodide) throw new Error("Pyodide loader is unavailable");
-  return window.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/" });
-}
-
 function firstStarterFile(starter: LabStarter) {
   return Object.entries(starter.files ?? { "notes.md": "# Lab notes\n" })[0];
-}
-
-function extractVariables(code: string) {
-  const matches = Array.from(code.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g));
-  return matches.slice(0, 12).map((match) => ({
-    name: match[1],
-    value: match[2].trim(),
-    scope: "local"
-  }));
 }
 
 export function LabWorkspace({
@@ -179,28 +139,19 @@ export function LabWorkspace({
 
   async function runCode() {
     try {
-      if (language === "python") {
-        setStdout("Loading Pyodide runtime...");
-        const pyodide = await loadBrowserPyodide();
-        const result = await pyodide.runPythonAsync(code);
-        setStdout(String(result ?? "Python executed successfully."));
-        setStderr("");
-      } else if (language === "sql") {
-        setStdout(definition.commands["run query"] ?? "Query executed.");
-        setStderr("");
-      } else if (!runtimeCapability.executable) {
-        setStdout(`${activeLanguage?.label ?? language} ${version}\n${runtimeCapability.description}`);
-        setStderr("");
-      } else {
-        const logs: string[] = [];
-        const executable = language === "typescript" ? code.replace(/:\s*[A-Za-z0-9_<>\[\]\|]+/g, "") : code;
-        const fn = new Function("console", executable);
-        fn({ log: (...args: unknown[]) => logs.push(args.map(String).join(" ")) });
-        setStdout(logs.join("\n") || `${language} executed successfully.`);
-        setStderr("");
-      }
-      setExecutionLog((items) => [`run ${language}@${version}`, ...items].slice(0, 8));
-      setVariables(extractVariables(code));
+      if (!activeLanguage) throw new Error("No runtime is registered for this language.");
+      if (language === "python") setStdout("Loading Pyodide runtime...");
+
+      const result = await executeLabCode({
+        language: activeLanguage,
+        version,
+        code,
+        commands: definition.commands
+      });
+      setStdout(result.stdout);
+      setStderr(result.stderr);
+      setExecutionLog((items) => [...result.logs, ...items].slice(0, 8));
+      setVariables(result.variables);
       setCurrentLine(null);
       toast.success("Execution complete");
     } catch (error) {
@@ -257,6 +208,18 @@ export function LabWorkspace({
     toast.success("Starter restored.");
   }
 
+  function loadLanguageStarter() {
+    const starterSnippet = getLanguageStarter(language);
+    setFileName(starterSnippet.fileName);
+    setCode(starterSnippet.code);
+    setStdout("Output appears here after you run code or checks.");
+    setStderr("");
+    setExecutionLog((items) => [`loaded ${language} starter`, ...items].slice(0, 8));
+    setVariables([]);
+    setCurrentLine(null);
+    toast.success(`${activeLanguage?.label ?? "Language"} starter loaded.`);
+  }
+
   function handleEditorMount(editor: unknown, monaco: unknown) {
     editorRef.current = editor;
     monacoRef.current = monaco;
@@ -276,7 +239,7 @@ export function LabWorkspace({
   function debugStart() {
     const firstExecutableLine = code.split("\n").findIndex((line) => line.trim() && !line.trim().startsWith("//")) + 1;
     setCurrentLine(firstExecutableLine || 1);
-    setVariables(extractVariables(code));
+    setVariables(extractRuntimeVariables(code));
     setExecutionLog((items) => ["debug start", ...items].slice(0, 8));
   }
 
@@ -337,6 +300,7 @@ export function LabWorkspace({
               ))}
             </select>
             <Button variant="outline" onClick={resetStarter}>Reset</Button>
+            <Button variant="outline" onClick={loadLanguageStarter}>Load starter</Button>
             <Button variant="outline" onClick={() => saveSession("active")} disabled={isPending}>
               Save session
             </Button>

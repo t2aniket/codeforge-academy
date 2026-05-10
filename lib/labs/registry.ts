@@ -4,7 +4,7 @@ export type LabLanguage = {
   id: string;
   label: string;
   versions: string[];
-  runtime: "native" | "pyodide" | "sql" | "wasm-adapter" | "simulated";
+  runtime: "native" | "pyodide" | "sql" | "wasm" | "wasm-adapter" | "simulated";
 };
 
 export type LabDefinition = {
@@ -21,6 +21,9 @@ export const browserLanguages: LabLanguage[] = [
   { id: "typescript", label: "TypeScript", versions: ["5.7", "5.6"], runtime: "native" },
   { id: "python", label: "Python", versions: ["3.12", "3.11", "3.10"], runtime: "pyodide" },
   { id: "sql", label: "SQL", versions: ["Postgres 16", "Postgres 15"], runtime: "sql" },
+  { id: "wasm", label: "WebAssembly", versions: ["MVP", "WASI adapter-ready"], runtime: "wasm" },
+  { id: "dockerfile", label: "Dockerfile", versions: ["Dockerfile v1"], runtime: "simulated" },
+  { id: "yaml", label: "YAML", versions: ["1.2"], runtime: "simulated" },
   { id: "java", label: "Java", versions: ["Latest browser JVM adapter"], runtime: "simulated" },
   { id: "dart", label: "Dart", versions: ["3.x WASM adapter"], runtime: "simulated" },
   { id: "cpp", label: "C++", versions: ["Clang WASM adapter"], runtime: "wasm-adapter" },
@@ -48,7 +51,7 @@ export const labRegistry: Record<LabKind, LabDefinition> = {
       commands: ["docker build -t codeforge-api .", "docker run -p 8080:8080 codeforge-api", "docker ps"],
       challenge: "Run the image and confirm the API is listening on port 8080."
     },
-    languages: browserLanguages.filter((language) => ["docker", "yaml", "javascript", "typescript", "python"].includes(language.id)),
+    languages: browserLanguages.filter((language) => ["dockerfile", "yaml", "javascript", "typescript", "python"].includes(language.id)),
     commands: {
       "docker ps": "CONTAINER ID   IMAGE           STATUS          PORTS\ncf91a8d        codeforge-api   Up 12 seconds   0.0.0.0:8080->8080/tcp",
       "docker images": "REPOSITORY      TAG       SIZE\ncodeforge-api   latest    128MB\nnode            20-alpine 172MB",
