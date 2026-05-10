@@ -38,12 +38,15 @@ export default async function DashboardPage() {
                 <div key={course.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-4">
                   <div>
                     <div className="font-semibold">{course.title}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {course.completedLessons} of {course.totalLessons} lessons complete
+                    </div>
                     <div className="mt-2 h-2 w-56 rounded-full bg-muted">
-                      <div className="h-2 rounded-full bg-primary" style={{ width: "42%" }} />
+                      <div className="h-2 rounded-full bg-primary" style={{ width: `${course.progressPercent}%` }} />
                     </div>
                   </div>
                   <Button asChild variant="outline">
-                    <Link href={`/courses/${course.slug}`}>Resume</Link>
+                    <Link href={course.resumeHref}>Resume</Link>
                   </Button>
                 </div>
               ))}

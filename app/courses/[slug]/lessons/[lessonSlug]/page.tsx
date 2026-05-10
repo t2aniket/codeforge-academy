@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { updateLastLessonAction } from "@/app/actions/enrollment";
 import { LessonActions } from "@/components/lesson-actions";
 import { LessonQuiz } from "@/components/lesson-quiz";
 import { MarkdownViewer } from "@/components/markdown-viewer";
@@ -11,6 +12,7 @@ import { getLesson, getLessonNote } from "@/lib/data";
 export default async function LessonPage({ params }: { params: { slug: string; lessonSlug: string } }) {
   const { course, lesson } = await getLesson(params.slug, params.lessonSlug);
   if (!course || !lesson) notFound();
+  await updateLastLessonAction({ courseId: course.id, lessonId: lesson.id });
   const initialNote = await getLessonNote(lesson.id);
   const lessons = course.modules.flatMap((module) => module.lessons);
 

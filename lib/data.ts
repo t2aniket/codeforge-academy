@@ -82,13 +82,14 @@ export async function getChallenges() {
 export async function getDashboard() {
   noStore();
   const allCourses = await getCourses();
+  const lessonLookup = buildLessonLookup(allCourses);
 
   if (hasSupabaseEnv()) {
     const supabase = createClient();
     const { data: userData } = await supabase!.auth.getUser();
 
     if (userData.user) {
-      const [{ data: progressRows }, { data: labRows }, { data: challengeRows }] = await Promise.all([
+      const [{ data: progressRows }, { data: labRows }, { data: challengeRows }, { data: enrollmentRows }] = await Promise.all([
         supabase!
           .from("user_progress")
           .select("lesson_id,xp_earned,completed_at")
@@ -99,15 +100,43 @@ export async function getDashboard() {
           .from("challenge_submissions")
           .select("challenge_id,xp_earned,created_at")
           .eq("user_id", userData.user.id)
-          .eq("passed", true)
+          .eq("passed", true),
+        supabase!
+          .from("course_enrollments")
+          .select("course_id,last_lesson_id,status,updated_at")
+          .eq("user_id", userData.user.id)
+          .eq("status", "active")
       ]);
 
       const completedLessons = (progressRows ?? []).map((row) => row.lesson_id as string);
+      const completedSet = new Set(completedLessons);
       const lessonXp = (progressRows ?? []).reduce((sum, row) => sum + Number(row.xp_earned ?? 0), 0);
       const challengeXp = (challengeRows ?? []).reduce((sum, row) => sum + Number(row.xp_earned ?? 0), 0);
       const xp = lessonXp + challengeXp;
       const practicedLabs = Array.from(new Set((labRows ?? []).map((row) => row.lab as never)));
       const streak = calculateStreak((progressRows ?? []).map((row) => row.completed_at as string | null));
+
+      const enrolledCourses = (enrollmentRows?.length ? enrollmentRows : []).map((row) => {
+        const course = allCourses.find((item) => item.id === row.course_id) ?? allCourses[0];
+        const totalLessons = course.modules.reduce((sum, module) => sum + module.lessons.length, 0);
+        const completedInCourse = course.modules
+          .flatMap((module) => module.lessons)
+          .filter((lesson) => completedSet.has(lesson.id)).length;
+        const lastLesson = row.last_lesson_id ? lessonLookup.get(row.last_lesson_id as string) : null;
+        const fallbackLesson = course.modules[0]?.lessons[0];
+
+        return {
+          ...course,
+          progressPercent: totalLessons ? Math.round((completedInCourse / totalLessons) * 100) : 0,
+          resumeHref: lastLesson
+            ? `/courses/${course.slug}/lessons/${lastLesson.slug}`
+            : fallbackLesson
+              ? `/courses/${course.slug}/lessons/${fallbackLesson.slug}`
+              : `/courses/${course.slug}`,
+          completedLessons: completedInCourse,
+          totalLessons
+        };
+      });
 
       return {
         progress: {
@@ -117,7 +146,13 @@ export async function getDashboard() {
           streak,
           badges: buildBadges(completedLessons.length, practicedLabs.length, streak)
         },
-        courses: allCourses.slice(0, 5),
+        courses: enrolledCourses.length ? enrolledCourses : allCourses.slice(0, 5).map((course) => ({
+          ...course,
+          progressPercent: 0,
+          resumeHref: `/courses/${course.slug}`,
+          completedLessons: 0,
+          totalLessons: course.modules.reduce((sum, module) => sum + module.lessons.length, 0)
+        })),
         recommended: allCourses.slice(5, 9),
         solvedChallenges: challengeRows ?? []
       };
@@ -126,10 +161,26 @@ export async function getDashboard() {
 
   return {
     progress: demoProgress,
-    courses: allCourses.slice(0, 5),
+    courses: allCourses.slice(0, 5).map((course, index) => ({
+      ...course,
+      progressPercent: index === 0 ? 25 : index === 1 ? 50 : 0,
+      resumeHref: `/courses/${course.slug}/lessons/${course.modules[0]?.lessons[0]?.slug ?? ""}`,
+      completedLessons: index,
+      totalLessons: course.modules.reduce((sum, module) => sum + module.lessons.length, 0)
+    })),
     recommended: allCourses.slice(5, 9),
     solvedChallenges: []
   };
+}
+
+function buildLessonLookup(allCourses: Course[]) {
+  const map = new Map<string, { slug: string; courseSlug: string }>();
+  for (const course of allCourses) {
+    for (const lesson of course.modules.flatMap((module) => module.lessons)) {
+      map.set(lesson.id, { slug: lesson.slug, courseSlug: course.slug });
+    }
+  }
+  return map;
 }
 
 export function getLabs() {

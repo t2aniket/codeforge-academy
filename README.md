@@ -26,10 +26,13 @@ ALLOW_DEMO_ADMIN=false
 ```
 
 4. Run `supabase/migrations/001_codeforge_schema.sql` in the Supabase SQL editor.
-5. Run `supabase/seed.sql` to add initial database content.
-6. Create at least one authenticated user in Supabase Auth. `/admin` is protected when Supabase is configured and `ALLOW_DEMO_ADMIN=false`.
-7. Keep the Admin Panel out of public navigation. It is intentionally not linked in the header; the owner should access it directly at `/admin` after auth is configured.
-8. Add your owner account to `admin_profiles` after signing up:
+5. If you are updating an existing database, also run later migrations in order:
+   - `supabase/migrations/002_challenge_xp.sql`
+   - `supabase/migrations/003_course_enrollments.sql`
+6. Run `supabase/seed.sql` to add initial database content.
+7. Create at least one authenticated user in Supabase Auth. `/admin` is protected when Supabase is configured and `ALLOW_DEMO_ADMIN=false`.
+8. Keep the Admin Panel out of public navigation. It is intentionally not linked in the header; the owner should access it directly at `/admin` after auth is configured.
+9. Add your owner account to `admin_profiles` after signing up:
 
 ```sql
 insert into public.admin_profiles (user_id, role)

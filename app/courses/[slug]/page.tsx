@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EnrollButton } from "@/components/enroll-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,9 +26,17 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
               ))}
             </div>
             {firstLesson && (
-              <Button asChild size="lg" className="mt-8">
-                <Link href={`/courses/${course.slug}/lessons/${firstLesson.slug}`}>Start course</Link>
-              </Button>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <EnrollButton
+                  courseId={course.id}
+                  courseSlug={course.slug}
+                  lessonId={firstLesson.id}
+                  lessonSlug={firstLesson.slug}
+                />
+                <Button asChild size="lg" variant="outline">
+                  <Link href={`/courses/${course.slug}/lessons/${firstLesson.slug}`}>Preview first lesson</Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>
