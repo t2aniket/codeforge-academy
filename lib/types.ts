@@ -25,6 +25,7 @@ export type Lesson = {
   slug: string;
   title: string;
   estimatedMinutes: number;
+  sortOrder?: number;
   markdown: string;
   quiz?: {
     question: string;
@@ -37,8 +38,10 @@ export type Lesson = {
 export type Module = {
   id: string;
   courseSlug: string;
+  slug?: string;
   title: string;
   summary: string;
+  sortOrder?: number;
   lessons: Lesson[];
 };
 
