@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { LabDefinition } from "@/lib/labs/registry";
+import type { LabStarter } from "@/lib/types";
 
 const LabWorkspace = dynamic(
   () => import("@/components/labs/lab-workspace").then((mod) => mod.LabWorkspace),
@@ -15,6 +16,23 @@ const LabWorkspace = dynamic(
   }
 );
 
-export function LabWorkspaceClient({ definition }: { definition: LabDefinition }) {
-  return <LabWorkspace definition={definition} />;
+export function LabWorkspaceClient({
+  definition,
+  starterOverride,
+  courseId,
+  lessonId
+}: {
+  definition: LabDefinition;
+  starterOverride?: LabStarter;
+  courseId?: string;
+  lessonId?: string;
+}) {
+  return (
+    <LabWorkspace
+      definition={definition}
+      starterOverride={starterOverride}
+      courseId={courseId}
+      lessonId={lessonId}
+    />
+  );
 }

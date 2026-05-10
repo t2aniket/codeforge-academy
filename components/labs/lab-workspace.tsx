@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { saveLabSessionAction } from "@/app/actions/labs";
 import { CodeEditor } from "@/components/labs/code-editor";
 import { SimulatedTerminal } from "@/components/labs/simulated-terminal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { LabDefinition } from "@/lib/labs/registry";
+import type { LabStarter } from "@/lib/types";
 
 declare global {
   interface Window {
@@ -41,13 +43,61 @@ async function loadBrowserPyodide() {
   return window.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/" });
 }
 
-export function LabWorkspace({ definition }: { definition: LabDefinition }) {
-  const starter = definition.defaultStarter;
-  const firstFile = Object.entries(starter.files ?? { "notes.md": "# Lab notes\n" })[0];
-  const [code, setCode] = useState(firstFile[1]);
+function firstStarterFile(starter: LabStarter) {
+  return Object.entries(starter.files ?? { "notes.md": "# Lab notes\n" })[0];
+}
+
+export function LabWorkspace({
+  definition,
+  starterOverride,
+  courseId,
+  lessonId
+}: {
+  definition: LabDefinition;
+  starterOverride?: LabStarter;
+  courseId?: string;
+  lessonId?: string;
+}) {
+  const starter = starterOverride ?? definition.defaultStarter;
+  const initialFile = firstStarterFile(starter);
+  const storageKey = `lab-session:${definition.id}:${courseId ?? "standalone"}:${lessonId ?? "standalone"}`;
+  const [fileName, setFileName] = useState(initialFile[0]);
+  const [code, setCode] = useState(initialFile[1]);
   const [language, setLanguage] = useState(starter.language ?? (definition.id === "sql" ? "sql" : "javascript"));
   const [output, setOutput] = useState("Output appears here after you run code or checks.");
   const [steps, setSteps] = useState<string[]>([]);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const nextFile = firstStarterFile(starter);
+    const saved = localStorage.getItem(storageKey);
+
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as {
+          fileName?: string;
+          code?: string;
+          language?: string;
+          output?: string;
+          steps?: string[];
+        };
+        setFileName(parsed.fileName ?? nextFile[0]);
+        setCode(parsed.code ?? nextFile[1]);
+        setLanguage(parsed.language ?? starter.language ?? (definition.id === "sql" ? "sql" : "javascript"));
+        setOutput(parsed.output ?? "Output appears here after you run code or checks.");
+        setSteps(parsed.steps ?? []);
+        return;
+      } catch {
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    setFileName(nextFile[0]);
+    setCode(nextFile[1]);
+    setLanguage(starter.language ?? (definition.id === "sql" ? "sql" : "javascript"));
+    setOutput("Output appears here after you run code or checks.");
+    setSteps([]);
+  }, [definition.id, starter, storageKey]);
 
   const dashboard = useMemo(() => {
     if (definition.id === "network") return ["Router R1: online", "Switch SW1: online", "G0/1: pending"];
@@ -79,6 +129,42 @@ export function LabWorkspace({ definition }: { definition: LabDefinition }) {
     }
   }
 
+  function saveSession(status: "active" | "completed" = "active") {
+    const session = {
+      fileName,
+      code,
+      language,
+      output,
+      steps,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(storageKey, JSON.stringify(session));
+
+    startTransition(async () => {
+      const result = await saveLabSessionAction({
+        lab: definition.id,
+        courseId,
+        lessonId,
+        files: { [fileName]: code },
+        terminalHistory: steps,
+        status
+      });
+      if (result.ok) toast.success(result.message);
+      else toast.error(result.message);
+    });
+  }
+
+  function resetStarter() {
+    const nextFile = firstStarterFile(starter);
+    localStorage.removeItem(storageKey);
+    setFileName(nextFile[0]);
+    setCode(nextFile[1]);
+    setLanguage(starter.language ?? (definition.id === "sql" ? "sql" : "javascript"));
+    setOutput("Output appears here after you run code or checks.");
+    setSteps([]);
+    toast.success("Starter restored.");
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-4">
@@ -88,19 +174,27 @@ export function LabWorkspace({ definition }: { definition: LabDefinition }) {
             <h1 className="mt-3 text-4xl font-black">{starter.title}</h1>
             <p className="mt-2 max-w-3xl text-muted-foreground">{starter.description}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setLanguage(language === "python" ? "javascript" : "python")}>
               {language === "python" ? "Use JS" : "Use Python"}
             </Button>
+            <Button variant="outline" onClick={resetStarter}>Reset</Button>
+            <Button variant="outline" onClick={() => saveSession("active")} disabled={isPending}>
+              Save session
+            </Button>
             <Button onClick={runCode}>Run</Button>
           </div>
+        </div>
+        <div className="rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground">
+          Editing <span className="font-mono text-foreground">{fileName}</span>
+          {starterOverride && <span> from linked lesson starter</span>}
         </div>
         <CodeEditor value={code} language={language} onChange={setCode} />
         <div className="grid gap-4 xl:grid-cols-2">
           <SimulatedTerminal
             commands={definition.commands}
             prompt={definition.id}
-            onCommand={(command) => setSteps((items) => Array.from(new Set([...items, command])))}
+            onCommand={(command) => setSteps((items) => [...items, command])}
           />
           <Card>
             <CardContent className="p-5">
@@ -143,8 +237,11 @@ export function LabWorkspace({ definition }: { definition: LabDefinition }) {
           <CardContent className="p-5">
             <h2 className="text-lg font-semibold">Session trace</h2>
             <div className="mt-3 text-sm text-muted-foreground">
-              {steps.length ? steps.join(" → ") : "Terminal commands will appear here."}
+              {steps.length ? steps.join(" -> ") : "Terminal commands will appear here."}
             </div>
+            <Button className="mt-4 w-full" onClick={() => saveSession("completed")} disabled={isPending}>
+              Mark lab practiced
+            </Button>
           </CardContent>
         </Card>
       </aside>
