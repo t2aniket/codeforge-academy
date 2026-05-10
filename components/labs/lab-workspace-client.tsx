@@ -16,6 +16,18 @@ const LabWorkspace = dynamic(
   }
 );
 
+const SqlLab = dynamic(
+  () => import("@/components/labs/sql-lab").then((mod) => mod.SqlLab),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[620px] items-center justify-center rounded-md border bg-card text-muted-foreground">
+        Loading SQL lab...
+      </div>
+    )
+  }
+);
+
 export function LabWorkspaceClient({
   definition,
   starterOverride,
@@ -27,6 +39,17 @@ export function LabWorkspaceClient({
   courseId?: string;
   lessonId?: string;
 }) {
+  if (definition.id === "sql") {
+    return (
+      <SqlLab
+        definition={definition}
+        starterOverride={starterOverride}
+        courseId={courseId}
+        lessonId={lessonId}
+      />
+    );
+  }
+
   return (
     <LabWorkspace
       definition={definition}
