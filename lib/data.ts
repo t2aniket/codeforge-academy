@@ -69,9 +69,14 @@ export async function getChallenges() {
         slug: challenge.slug,
         difficulty: challenge.difficulty,
         category: challenge.category,
+        language: (challenge as { language?: string }).language ?? (challenge.category === "SQL" ? "sql" : "javascript"),
+        track: (challenge as { track?: string }).track ?? challenge.category,
+        kind: (challenge as { kind?: "practice" | "interview" }).kind ?? "practice",
         prompt: challenge.prompt,
         starterCode: challenge.starter_code,
-        tests: challenge.tests
+        tests: challenge.tests,
+        functionName: (challenge as { function_name?: string }).function_name,
+        testCases: (challenge as { test_cases?: Array<{ input: unknown[]; expected: unknown }> }).test_cases
       }));
     }
   }

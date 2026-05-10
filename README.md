@@ -29,6 +29,7 @@ ALLOW_DEMO_ADMIN=false
 5. If you are updating an existing database, also run later migrations in order:
    - `supabase/migrations/002_challenge_xp.sql`
    - `supabase/migrations/003_course_enrollments.sql`
+   - `supabase/migrations/004_challenge_tracks.sql`
 6. Run `supabase/seed.sql` to add initial database content.
 7. Create at least one authenticated user in Supabase Auth. `/admin` is protected when Supabase is configured and `ALLOW_DEMO_ADMIN=false`.
 8. Keep the Admin Panel out of public navigation. It is intentionally not linked in the header; the owner should access it directly at `/admin` after auth is configured.

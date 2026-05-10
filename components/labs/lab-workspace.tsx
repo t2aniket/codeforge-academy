@@ -137,6 +137,20 @@ export function LabWorkspace({
   const activeLanguage = definition.languages.find((item) => item.id === language);
   const runtimeCapability = getRuntimeCapability(activeLanguage);
 
+  function changeLanguage(nextLanguage: string) {
+    const nextVersion = definition.languages.find((item) => item.id === nextLanguage)?.versions[0] ?? "default";
+    const starterSnippet = getLanguageStarter(nextLanguage);
+    setLanguage(nextLanguage);
+    setVersion(nextVersion);
+    setFileName(starterSnippet.fileName);
+    setCode(starterSnippet.code);
+    setStdout("Output appears here after you run code or checks.");
+    setStderr("");
+    setExecutionLog((items) => [`switched to ${nextLanguage}`, ...items].slice(0, 8));
+    setVariables([]);
+    setCurrentLine(null);
+  }
+
   async function runCode() {
     try {
       if (!activeLanguage) throw new Error("No runtime is registered for this language.");
@@ -220,6 +234,25 @@ export function LabWorkspace({
     toast.success(`${activeLanguage?.label ?? "Language"} starter loaded.`);
   }
 
+  const outputPanel = (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Runtime output</h2>
+          <Button size="sm" onClick={runCode}>Run</Button>
+        </div>
+        <pre className="mt-4 max-h-[320px] min-h-[180px] overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-4 text-sm text-slate-100">
+          {stdout}
+        </pre>
+        {stderr && (
+          <pre className="mt-3 max-h-[160px] overflow-auto whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            {stderr}
+          </pre>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   function handleEditorMount(editor: unknown, monaco: unknown) {
     editorRef.current = editor;
     monacoRef.current = monaco;
@@ -268,7 +301,7 @@ export function LabWorkspace({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -280,11 +313,7 @@ export function LabWorkspace({
             <select
               className="h-10 rounded-md border bg-background px-3 text-sm"
               value={language}
-              onChange={(event) => {
-                const nextLanguage = event.target.value;
-                setLanguage(nextLanguage);
-                setVersion(definition.languages.find((item) => item.id === nextLanguage)?.versions[0] ?? "default");
-              }}
+              onChange={(event) => changeLanguage(event.target.value)}
             >
               {definition.languages.map((item) => (
                 <option key={item.id} value={item.id}>{item.label}</option>
@@ -315,28 +344,15 @@ export function LabWorkspace({
           </span>
         </div>
         <CodeEditor value={code} language={language} onChange={setCode} onMount={handleEditorMount} />
-        <div className="grid gap-4 xl:grid-cols-2">
-          <SimulatedTerminal
-            commands={definition.commands}
-            prompt={definition.id}
-            onCommand={(command) => setSteps((items) => [...items, command])}
-          />
-          <Card>
-            <CardContent className="p-5">
-              <h2 className="text-lg font-semibold">Runtime output</h2>
-              <pre className="mt-4 min-h-[280px] whitespace-pre-wrap rounded-md bg-slate-950 p-4 text-sm text-slate-100">
-                {stdout}
-              </pre>
-              {stderr && (
-                <pre className="mt-3 whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                  {stderr}
-                </pre>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <div className="lg:hidden">{outputPanel}</div>
       </div>
-      <aside className="space-y-4">
+      <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <div className="hidden lg:block">{outputPanel}</div>
+        <SimulatedTerminal
+          commands={definition.commands}
+          prompt={definition.id}
+          onCommand={(command) => setSteps((items) => [...items, command])}
+        />
         <Card>
           <CardContent className="p-5">
             <h2 className="text-lg font-semibold">Runtime capability</h2>

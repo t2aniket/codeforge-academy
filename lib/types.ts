@@ -66,9 +66,17 @@ export type Challenge = {
   slug: string;
   difficulty: Difficulty;
   category: string;
+  language?: string;
+  track?: string;
+  kind?: "practice" | "interview";
   prompt: string;
   starterCode: string;
   tests: string;
+  functionName?: string;
+  testCases?: Array<{
+    input: unknown[];
+    expected: unknown;
+  }>;
 };
 
 export type UserProgress = {

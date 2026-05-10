@@ -765,21 +765,37 @@ export const challenges: Challenge[] = [
     title: "Normalize Usernames",
     slug: "normalize-usernames",
     difficulty: "Beginner",
-    category: "Strings",
+    category: "Python Basics",
+    language: "python",
+    track: "Python",
+    kind: "practice",
     prompt: "Return a lowercase username with spaces replaced by hyphens.",
-    starterCode: "function normalizeUsername(value) {\n  // write your solution\n}\n\nmodule.exports = normalizeUsername;",
-    tests:
-      "expect(fn('Ada Lovelace')).toBe('ada-lovelace');\nexpect(fn(' Grace  Hopper ')).toBe('grace-hopper');"
+    starterCode: "def solve(value):\n    # write your solution\n    return value\n",
+    functionName: "solve",
+    tests: "solve('Ada Lovelace') -> 'ada-lovelace'\nsolve(' Grace  Hopper ') -> 'grace-hopper'",
+    testCases: [
+      { input: ["Ada Lovelace"], expected: "ada-lovelace" },
+      { input: [" Grace  Hopper "], expected: "grace-hopper" }
+    ]
   },
   {
     id: "challenge-2",
     title: "Retry Budget",
     slug: "retry-budget",
     difficulty: "Intermediate",
-    category: "Reliability",
+    category: "JavaScript Basics",
+    language: "javascript",
+    track: "JavaScript",
+    kind: "practice",
     prompt: "Given attempts and maxRetries, return whether another retry is allowed.",
-    starterCode: "function canRetry(attempts, maxRetries) {\n  return false;\n}\n\nmodule.exports = canRetry;",
-    tests: "expect(fn(0, 3)).toBe(true);\nexpect(fn(3, 3)).toBe(false);"
+    starterCode: "function solve(attempts, maxRetries) {\n  return false;\n}\n\nmodule.exports = solve;",
+    functionName: "solve",
+    tests: "solve(0, 3) -> true\nsolve(3, 3) -> false",
+    testCases: [
+      { input: [0, 3], expected: true },
+      { input: [3, 3], expected: false },
+      { input: [2, 3], expected: true }
+    ]
   },
   {
     id: "challenge-3",
@@ -787,9 +803,136 @@ export const challenges: Challenge[] = [
     slug: "top-sql-learners",
     difficulty: "Beginner",
     category: "SQL",
+    language: "sql",
+    track: "SQL",
+    kind: "practice",
     prompt: "Write a query that returns learners with at least 500 XP ordered by XP descending.",
     starterCode: "select * from learners;",
     tests: "Expected columns: name, xp. Filter xp >= 500. Order by xp desc."
+  },
+  {
+    id: "challenge-4",
+    title: "Two Sum for Interviews",
+    slug: "two-sum-interview",
+    difficulty: "Beginner",
+    category: "Arrays",
+    language: "javascript",
+    track: "Interview",
+    kind: "interview",
+    prompt: "Return the indexes of two numbers that add up to the target. Return the first valid pair you find.",
+    starterCode: "function solve(nums, target) {\n  // return [leftIndex, rightIndex]\n  return [];\n}\n\nmodule.exports = solve;",
+    functionName: "solve",
+    tests: "solve([2, 7, 11, 15], 9) -> [0, 1]\nsolve([3, 2, 4], 6) -> [1, 2]",
+    testCases: [
+      { input: [[2, 7, 11, 15], 9], expected: [0, 1] },
+      { input: [[3, 2, 4], 6], expected: [1, 2] }
+    ]
+  },
+  {
+    id: "challenge-5",
+    title: "Valid Parentheses",
+    slug: "valid-parentheses",
+    difficulty: "Intermediate",
+    category: "Stacks",
+    language: "javascript",
+    track: "Interview",
+    kind: "interview",
+    prompt: "Return true when brackets are balanced. Support (), [], and {}.",
+    starterCode: "function solve(value) {\n  return false;\n}\n\nmodule.exports = solve;",
+    functionName: "solve",
+    tests: "solve('()[]{}') -> true\nsolve('(]') -> false\nsolve('{[]}') -> true",
+    testCases: [
+      { input: ["()[]{}"], expected: true },
+      { input: ["(]"], expected: false },
+      { input: ["{[]}"], expected: true }
+    ]
+  },
+  {
+    id: "challenge-6",
+    title: "Longest Word",
+    slug: "longest-word",
+    difficulty: "Beginner",
+    category: "Python Strings",
+    language: "python",
+    track: "Python",
+    kind: "practice",
+    prompt: "Return the longest word in a sentence. If tied, return the first longest word.",
+    starterCode: "def solve(sentence):\n    return ''\n",
+    functionName: "solve",
+    tests: "solve('build better labs') -> 'better'\nsolve('ship code daily') -> 'daily'",
+    testCases: [
+      { input: ["build better labs"], expected: "better" },
+      { input: ["ship code daily"], expected: "daily" }
+    ]
+  },
+  {
+    id: "challenge-7",
+    title: "Progress Percentage",
+    slug: "progress-percentage",
+    difficulty: "Beginner",
+    category: "TypeScript",
+    language: "typescript",
+    track: "TypeScript",
+    kind: "practice",
+    prompt: "Return a rounded progress percentage from completed and total lesson counts.",
+    starterCode: "function solve(completed: number, total: number): number {\n  return 0;\n}\n\nmodule.exports = solve;",
+    functionName: "solve",
+    tests: "solve(3, 10) -> 30\nsolve(1, 3) -> 33\nsolve(0, 0) -> 0",
+    testCases: [
+      { input: [3, 10], expected: 30 },
+      { input: [1, 3], expected: 33 },
+      { input: [0, 0], expected: 0 }
+    ]
+  },
+  {
+    id: "challenge-8",
+    title: "API Health Status",
+    slug: "api-health-status",
+    difficulty: "Intermediate",
+    category: "Backend",
+    language: "javascript",
+    track: "JavaScript",
+    kind: "practice",
+    prompt: "Given latencyMs and errorRate, return 'healthy', 'slow', or 'down'. Down means errorRate >= 0.5. Slow means latencyMs > 500.",
+    starterCode: "function solve(latencyMs, errorRate) {\n  return 'healthy';\n}\n\nmodule.exports = solve;",
+    functionName: "solve",
+    tests: "solve(120, 0.01) -> 'healthy'\nsolve(800, 0.01) -> 'slow'\nsolve(120, 0.6) -> 'down'",
+    testCases: [
+      { input: [120, 0.01], expected: "healthy" },
+      { input: [800, 0.01], expected: "slow" },
+      { input: [120, 0.6], expected: "down" }
+    ]
+  },
+  {
+    id: "challenge-9",
+    title: "Second Largest XP",
+    slug: "second-largest-xp",
+    difficulty: "Intermediate",
+    category: "Arrays",
+    language: "python",
+    track: "Interview",
+    kind: "interview",
+    prompt: "Return the second largest unique number in a list. Return None if it does not exist.",
+    starterCode: "def solve(values):\n    return None\n",
+    functionName: "solve",
+    tests: "solve([10, 20, 20, 30]) -> 20\nsolve([5, 5]) -> None",
+    testCases: [
+      { input: [[10, 20, 20, 30]], expected: 20 },
+      { input: [[5, 5]], expected: null }
+    ]
+  },
+  {
+    id: "challenge-10",
+    title: "Learner Completion Query",
+    slug: "learner-completion-query",
+    difficulty: "Advanced",
+    category: "SQL",
+    language: "sql",
+    track: "SQL",
+    kind: "interview",
+    prompt: "Write a dashboard query that returns lesson_id and xp_earned for completed lessons only, newest first.",
+    starterCode: "select * from user_progress;",
+    tests: "Expected columns: lesson_id, xp_earned. Filter completed = true. Order by completed_at desc."
   }
 ];
 
