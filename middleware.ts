@@ -3,7 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   if (!request.nextUrl.pathname.startsWith("/admin")) return NextResponse.next();
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL === undefined || process.env.ALLOW_DEMO_ADMIN === "true") {
+  if (
+    process.env.NEXT_PUBLIC_SUPABASE_URL === undefined ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === undefined ||
+    process.env.ALLOW_DEMO_ADMIN === "true"
+  ) {
     return NextResponse.next();
   }
 
@@ -33,8 +37,22 @@ export async function middleware(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   if (!data.user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/auth/login";
     url.searchParams.set("login", "required");
+    return NextResponse.redirect(url);
+  }
+
+  const { data: adminProfile } = await supabase
+    .from("admin_profiles")
+    .select("user_id")
+    .eq("user_id", data.user.id)
+    .in("role", ["owner", "admin"])
+    .maybeSingle();
+
+  if (!adminProfile) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    url.searchParams.set("admin", "denied");
     return NextResponse.redirect(url);
   }
 

@@ -29,8 +29,14 @@ ALLOW_DEMO_ADMIN=false
 5. Run `supabase/seed.sql` to add initial database content.
 6. Create at least one authenticated user in Supabase Auth. `/admin` is protected when Supabase is configured and `ALLOW_DEMO_ADMIN=false`.
 7. Keep the Admin Panel out of public navigation. It is intentionally not linked in the header; the owner should access it directly at `/admin` after auth is configured.
+8. Add your owner account to `admin_profiles` after signing up:
 
-Without Supabase env vars, the app runs in demo mode using `lib/seed-data.ts`. For a real public deployment, set `ALLOW_DEMO_ADMIN=false` and configure Supabase Auth before sharing the site.
+```sql
+insert into public.admin_profiles (user_id, role)
+values ('YOUR_AUTH_USER_ID', 'owner');
+```
+
+Without Supabase env vars, the app runs in demo mode using `lib/seed-data.ts`. For a real public deployment, set `ALLOW_DEMO_ADMIN=false`, configure Supabase Auth, and add only your account to `admin_profiles`.
 
 ## Content model
 
@@ -81,8 +87,7 @@ Because all code and lab execution is browser-side simulation or Pyodide runtime
 
 ## Notes for production hardening
 
-- Replace broad authenticated admin policies with an `admin_profiles` table or Supabase custom claims before opening author access to a team.
-- Add an `admin_profiles` table or Supabase custom claim so only your account can manage `/admin`, not every authenticated learner.
+- Keep admin access limited through `admin_profiles` or Supabase custom claims before opening author access to a team.
 - Add storage buckets for uploaded thumbnails and lesson assets.
 - Persist local demo notes/progress into Supabase once auth UI is enabled.
 - Add automated Playwright smoke tests around lesson completion, challenge execution, and admin publishing.

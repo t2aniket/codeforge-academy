@@ -16,6 +16,12 @@ create table if not exists public.courses (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.admin_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null check (role in ('owner', 'admin')),
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.modules (
   id uuid primary key default uuid_generate_v4(),
   course_id uuid not null references public.courses(id) on delete cascade,
@@ -99,6 +105,7 @@ create table if not exists public.challenge_submissions (
 );
 
 alter table public.courses enable row level security;
+alter table public.admin_profiles enable row level security;
 alter table public.modules enable row level security;
 alter table public.lessons enable row level security;
 alter table public.lab_sessions enable row level security;
@@ -108,6 +115,7 @@ alter table public.challenges enable row level security;
 alter table public.challenge_submissions enable row level security;
 
 create policy "Published courses are readable" on public.courses for select using (published = true or auth.role() = 'authenticated');
+create policy "Admins can read their admin profile" on public.admin_profiles for select using (auth.uid() = user_id);
 create policy "Modules are readable" on public.modules for select using (true);
 create policy "Lessons are readable" on public.lessons for select using (true);
 create policy "Challenges are readable" on public.challenges for select using (published = true);
@@ -117,12 +125,21 @@ create policy "Users manage their progress" on public.user_progress for all usin
 create policy "Users manage their notes" on public.user_notes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage challenge submissions" on public.challenge_submissions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-create policy "Authenticated authors manage courses" on public.courses for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
-create policy "Authenticated authors manage modules" on public.modules for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
-create policy "Authenticated authors manage lessons" on public.lessons for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
-create policy "Authenticated authors manage challenges" on public.challenges for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "Admins manage courses" on public.courses for all
+using (exists (select 1 from public.admin_profiles ap where ap.user_id = auth.uid()))
+with check (exists (select 1 from public.admin_profiles ap where ap.user_id = auth.uid()));
+create policy "Admins manage modules" on public.modules for all
+using (exists (select 1 from public.admin_profiles ap where ap.user_id = auth.uid()))
+with check (exists (select 1 from public.admin_profiles ap where ap.user_id = auth.uid()));
+create policy "Admins manage lessons" on public.lessons for all
+using (exists (select 1 from public.admin_profiles ap where ap.user_id = auth.uid()))
+with check (exists (select 1 from public.admin_profiles ap where ap.user_id = auth.uid()));
+create policy "Admins manage challenges" on public.challenges for all
+using (exists (select 1 from public.admin_profiles ap where ap.user_id = auth.uid()))
+with check (exists (select 1 from public.admin_profiles ap where ap.user_id = auth.uid()));
 
 create index if not exists courses_slug_idx on public.courses(slug);
+create index if not exists admin_profiles_role_idx on public.admin_profiles(role);
 create index if not exists modules_course_idx on public.modules(course_id, sort_order);
 create index if not exists lessons_module_idx on public.lessons(module_id, sort_order);
 create index if not exists progress_user_idx on public.user_progress(user_id);

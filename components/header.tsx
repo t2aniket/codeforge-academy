@@ -41,11 +41,14 @@ export function Header() {
         <div className="flex items-center gap-2">
           <button
             className="hidden h-9 items-center gap-2 rounded-md border bg-card px-3 text-sm text-muted-foreground shadow-sm sm:flex"
-            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))}
           >
             <span>Search</span>
-            <kbd className="rounded-sm border bg-muted px-1.5 text-[11px]">⌘K</kbd>
+            <kbd className="rounded-sm border bg-muted px-1.5 text-[11px]">Ctrl K</kbd>
           </button>
+          <Button asChild size="sm" variant="outline">
+            <Link href="/auth/login">Sign in</Link>
+          </Button>
           <Button asChild size="sm">
             <Link href="/playground">Playground</Link>
           </Button>

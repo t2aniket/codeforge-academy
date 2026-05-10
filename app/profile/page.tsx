@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export const metadata = { title: "Profile" };
 
@@ -30,7 +31,10 @@ export default function ProfilePage() {
               <input type="checkbox" />
             </label>
           </div>
-          <Button>Save settings</Button>
+          <div className="flex flex-wrap gap-3">
+            <Button>Save settings</Button>
+            <SignOutButton />
+          </div>
         </CardContent>
       </Card>
     </div>
