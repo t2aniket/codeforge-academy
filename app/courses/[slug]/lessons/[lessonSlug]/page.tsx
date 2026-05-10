@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LessonActions } from "@/components/lesson-actions";
+import { LessonQuiz } from "@/components/lesson-quiz";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,19 +37,11 @@ export default async function LessonPage({ params }: { params: { slug: string; l
         </div>
         <MarkdownViewer content={lesson.markdown} />
         {lesson.quiz && (
-          <Card className="mt-10">
-            <CardContent className="p-6">
-              <h2 className="text-xl font-semibold">Checkpoint quiz</h2>
-              <p className="mt-3 text-muted-foreground">{lesson.quiz.question}</p>
-              <div className="mt-4 grid gap-2">
-                {lesson.quiz.options.map((option) => (
-                  <div key={option} className="rounded-md border p-3 text-sm">
-                    {option}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <LessonQuiz
+            question={lesson.quiz.question}
+            options={lesson.quiz.options}
+            answer={lesson.quiz.answer}
+          />
         )}
       </article>
       <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
