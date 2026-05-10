@@ -118,7 +118,8 @@ export async function getDashboard() {
           badges: buildBadges(completedLessons.length, practicedLabs.length, streak)
         },
         courses: allCourses.slice(0, 5),
-        recommended: allCourses.slice(5, 9)
+        recommended: allCourses.slice(5, 9),
+        solvedChallenges: challengeRows ?? []
       };
     }
   }
@@ -126,7 +127,8 @@ export async function getDashboard() {
   return {
     progress: demoProgress,
     courses: allCourses.slice(0, 5),
-    recommended: allCourses.slice(5, 9)
+    recommended: allCourses.slice(5, 9),
+    solvedChallenges: []
   };
 }
 

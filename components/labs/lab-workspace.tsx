@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { LabDefinition } from "@/lib/labs/registry";
+import { getRuntimeCapability } from "@/lib/labs/runtime-capabilities";
 import type { LabStarter } from "@/lib/types";
 
 declare global {
@@ -173,6 +174,8 @@ export function LabWorkspace({
     if (definition.id === "testing") return ["Pytest: ready", "Playwright: ready", "Cypress: ready"];
     return ["Workspace mounted", "Runtime isolated", "Progress autosaved"];
   }, [definition.id]);
+  const activeLanguage = definition.languages.find((item) => item.id === language);
+  const runtimeCapability = getRuntimeCapability(activeLanguage);
 
   async function runCode() {
     try {
@@ -185,8 +188,8 @@ export function LabWorkspace({
       } else if (language === "sql") {
         setStdout(definition.commands["run query"] ?? "Query executed.");
         setStderr("");
-      } else if (["java", "dart", "cpp", "rust", "go", "ruby", "php", "kotlin", "swift"].includes(language)) {
-        setStdout(`${definition.languages.find((item) => item.id === language)?.label ?? language} ${version} adapter prepared.\nBrowser-only execution adapter is registered as simulated until the WASM runtime asset is installed.`);
+      } else if (!runtimeCapability.executable) {
+        setStdout(`${activeLanguage?.label ?? language} ${version}\n${runtimeCapability.description}`);
         setStderr("");
       } else {
         const logs: string[] = [];
@@ -343,6 +346,9 @@ export function LabWorkspace({
         <div className="rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground">
           Editing <span className="font-mono text-foreground">{fileName}</span>
           {starterOverride && <span> from linked lesson starter</span>}
+          <span className="ml-2 inline-flex rounded-sm border px-2 py-0.5 text-xs text-foreground">
+            {runtimeCapability.label}
+          </span>
         </div>
         <CodeEditor value={code} language={language} onChange={setCode} onMount={handleEditorMount} />
         <div className="grid gap-4 xl:grid-cols-2">
@@ -367,6 +373,12 @@ export function LabWorkspace({
         </div>
       </div>
       <aside className="space-y-4">
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="text-lg font-semibold">Runtime capability</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{runtimeCapability.description}</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-5">
             <h2 className="text-lg font-semibold">Debug toolbar</h2>

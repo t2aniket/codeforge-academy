@@ -7,7 +7,7 @@ import { getDashboard } from "@/lib/data";
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const { progress, courses, recommended } = await getDashboard();
+  const { progress, courses, recommended, solvedChallenges } = await getDashboard();
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -18,7 +18,8 @@ export default async function DashboardPage() {
           ["XP", progress.xp],
           ["Daily streak", `${progress.streak} days`],
           ["Lessons done", progress.completedLessons.length],
-          ["Labs practiced", progress.practicedLabs.length]
+          ["Labs practiced", progress.practicedLabs.length],
+          ["Challenges", solvedChallenges.length]
         ].map(([label, value]) => (
           <Card key={label}>
             <CardContent className="p-5">
@@ -69,6 +70,22 @@ export default async function DashboardPage() {
                     {course.title}
                   </Link>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-2xl font-semibold">Solved challenges</h2>
+              <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                {solvedChallenges.length ? (
+                  solvedChallenges.slice(0, 5).map((challenge, index) => (
+                    <div key={`${challenge.challenge_id}-${index}`} className="rounded-md border p-3">
+                      Challenge {challenge.challenge_id} · {challenge.xp_earned} XP
+                    </div>
+                  ))
+                ) : (
+                  <p>No solved challenges yet.</p>
+                )}
               </div>
             </CardContent>
           </Card>

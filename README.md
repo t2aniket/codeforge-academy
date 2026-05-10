@@ -92,6 +92,22 @@ To add Kubernetes, AWS CLI, Terraform, or a security lab:
 
 The shared workspace already provides Monaco, xterm.js, dashboards, guided commands, Pyodide Python execution, JavaScript execution, SQL feedback, and session traces.
 
+## Browser runtime adapters
+
+The lab registry supports language/version metadata for JavaScript, TypeScript, Python, SQL, Java, Dart, C++, Rust, Go, Ruby, PHP, Kotlin, and Swift.
+
+Current executable browser paths:
+
+- JavaScript and TypeScript-style snippets run in the browser sandbox.
+- Python runs through Pyodide.
+- SQL runs through the CodeForge in-browser SQL simulator.
+
+Adapter-ready paths:
+
+- Java, Dart, C++, Rust, Go, Ruby, PHP, Kotlin, and Swift are modeled in the UI and session layer, but require adding browser runtime assets before real execution.
+- Add actual runtime loaders behind `components/labs/lab-workspace.tsx` or split per-language adapters under `lib/labs`.
+- Keep all execution browser-only. Do not send learner code to the server.
+
 ## Deployment to Vercel
 
 1. Push the project to GitHub.
