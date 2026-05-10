@@ -7,11 +7,13 @@ import { useEffect, useRef } from "react";
 export function SimulatedTerminal({
   commands,
   prompt = "codeforge",
-  onCommand
+  onCommand,
+  className = "h-[360px]"
 }: {
   commands: Record<string, string>;
   prompt?: string;
   onCommand?: (command: string) => void;
+  className?: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -80,5 +82,5 @@ export function SimulatedTerminal({
     };
   }, [commands, onCommand, prompt]);
 
-  return <div ref={hostRef} className="terminal-frame h-[360px] overflow-hidden rounded-md border bg-slate-950" />;
+  return <div ref={hostRef} className={`terminal-frame overflow-hidden rounded-md border bg-slate-950 ${className}`} />;
 }

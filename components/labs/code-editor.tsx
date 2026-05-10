@@ -11,17 +11,19 @@ export function CodeEditor({
   value,
   language,
   onChange,
-  onMount
+  onMount,
+  height = "420px"
 }: {
   value: string;
   language: string;
   onChange: (value: string) => void;
   onMount?: (editor: unknown, monaco: unknown) => void;
+  height?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className="h-full overflow-hidden rounded-md border">
       <Monaco
-        height="420px"
+        height={height}
         language={language}
         theme="vs-dark"
         value={value}

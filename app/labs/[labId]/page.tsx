@@ -23,7 +23,7 @@ export default async function LabPage({
     linked?.lesson?.lab?.lab === definition.id ? linked.lesson.lab : undefined;
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-4 lg:px-6">
       <LabWorkspaceClient
         definition={definition}
         starterOverride={starterOverride}
