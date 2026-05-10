@@ -1,20 +1,32 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedLearningPrefixes = ["/dashboard", "/profile", "/courses", "/labs", "/playground", "/challenges"];
+const publicPrefixes = ["/auth", "/_next", "/favicon.ico"];
+const protectedLearningPrefixes = ["/", "/dashboard", "/profile", "/courses", "/labs", "/playground", "/challenges", "/explore"];
 
 export async function middleware(request: NextRequest) {
+  const isPublicRoute = publicPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
+  if (isPublicRoute) return NextResponse.next();
+
   const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
-  const isProtectedLearningRoute =
-    process.env.REQUIRE_AUTH_FOR_LEARNING === "true" &&
-    protectedLearningPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
+  const isProtectedLearningRoute = protectedLearningPrefixes.some((prefix) =>
+    prefix === "/" ? request.nextUrl.pathname === "/" : request.nextUrl.pathname.startsWith(prefix)
+  );
 
   if (!isAdminRoute && !isProtectedLearningRoute) return NextResponse.next();
+
   if (
     process.env.NEXT_PUBLIC_SUPABASE_URL === undefined ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === undefined ||
-    (isAdminRoute && process.env.ALLOW_DEMO_ADMIN === "true")
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === undefined
   ) {
+    if (request.cookies.get("codeforge_demo_session")?.value === "active") return NextResponse.next();
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    url.searchParams.set("login", "required");
+    return NextResponse.redirect(url);
+  }
+
+  if (isAdminRoute && process.env.ALLOW_DEMO_ADMIN === "true") {
     return NextResponse.next();
   }
 
@@ -46,6 +58,7 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     url.searchParams.set("login", "required");
+    url.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
 
@@ -69,5 +82,22 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*", "/profile/:path*", "/courses/:path*", "/labs/:path*", "/playground/:path*", "/challenges/:path*"]
+  matcher: [
+    "/",
+    "/admin",
+    "/admin/:path*",
+    "/dashboard",
+    "/dashboard/:path*",
+    "/profile",
+    "/profile/:path*",
+    "/courses",
+    "/courses/:path*",
+    "/labs",
+    "/labs/:path*",
+    "/playground",
+    "/challenges",
+    "/challenges/:path*",
+    "/explore",
+    "/explore/:path*"
+  ]
 };

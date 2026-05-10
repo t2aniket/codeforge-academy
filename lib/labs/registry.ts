@@ -91,6 +91,10 @@ export const labRegistry: Record<LabKind, LabDefinition> = {
       lab: "network",
       title: "Configure an edge router",
       description: "Use Cisco-like commands and watch the topology state respond.",
+      language: "text",
+      files: {
+        "topology.cfg": "R1 g0/0 192.168.1.1/24 up\nR1 g0/1 unassigned down\nSW1 vlan 10 STUDENTS active\nSW1 vlan 20 STAFF active\n\n# Goal\n# Configure R1 g0/1 as 10.0.0.1/24 and bring the interface up.\n"
+      },
       commands: ["show ip interface brief", "conf t", "interface g0/1", "ip address 10.0.0.1 255.255.255.0"],
       challenge: "Bring G0/1 up and assign the correct gateway IP."
     },
@@ -112,6 +116,10 @@ export const labRegistry: Record<LabKind, LabDefinition> = {
       lab: "linux",
       title: "Navigate and inspect a service",
       description: "Practice common shell commands in a realistic project filesystem.",
+      language: "shell",
+      files: {
+        "terminal-notes.sh": "# CodeForge Linux workspace\npwd\nls -la\ncat README.md\ncat logs/api.log\nsystemctl status api\n"
+      },
       commands: ["pwd", "ls -la", "cat README.md", "systemctl status api"],
       challenge: "Find the service log and identify the failing environment variable."
     },

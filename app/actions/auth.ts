@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/server";
@@ -10,12 +11,23 @@ const authSchema = z.object({
 });
 
 export async function signInAction(_: unknown, formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    return { ok: false, message: "Supabase is not configured yet. Add env vars before using real login." };
-  }
-
   const parsed = authSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: parsed.error.errors[0]?.message ?? "Invalid login" };
+
+  if (!hasSupabaseEnv()) {
+    cookies().set("codeforge_demo_session", "active", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+    cookies().set("codeforge_demo_email", parsed.data.email, {
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+    redirect("/dashboard");
+  }
 
   const supabase = createClient();
   const { error } = await supabase!.auth.signInWithPassword(parsed.data);
@@ -25,12 +37,23 @@ export async function signInAction(_: unknown, formData: FormData) {
 }
 
 export async function signUpAction(_: unknown, formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    return { ok: false, message: "Supabase is not configured yet. Add env vars before creating accounts." };
-  }
-
   const parsed = authSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: parsed.error.errors[0]?.message ?? "Invalid signup" };
+
+  if (!hasSupabaseEnv()) {
+    cookies().set("codeforge_demo_session", "active", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+    cookies().set("codeforge_demo_email", parsed.data.email, {
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+    redirect("/dashboard");
+  }
 
   const supabase = createClient();
   const { error } = await supabase!.auth.signUp({
@@ -47,6 +70,8 @@ export async function signOutAction() {
     const supabase = createClient();
     await supabase!.auth.signOut();
   }
+  cookies().delete("codeforge_demo_session");
+  cookies().delete("codeforge_demo_email");
 
-  redirect("/");
+  redirect("/auth/login");
 }

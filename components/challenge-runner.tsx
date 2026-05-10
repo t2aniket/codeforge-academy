@@ -6,7 +6,6 @@ import { saveChallengeSubmissionAction } from "@/app/actions/challenges";
 import { CodeEditor } from "@/components/labs/code-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { executeLabCode } from "@/lib/labs/runtime-adapters";
 import { browserLanguages, type LabLanguage } from "@/lib/labs/registry";
 import type { Challenge } from "@/lib/types";
@@ -19,29 +18,32 @@ export function ChallengeRunner({ challenges }: { challenges: Challenge[] }) {
   const filtered = useMemo(() => filterChallenges(challenges, track), [challenges, track]);
   const [selectedId, setSelectedId] = useState(challenges[0]?.id);
   const selected = filtered.find((challenge) => challenge.id === selectedId) ?? filtered[0] ?? challenges[0];
-  const defaultLanguage = selected?.language ?? "javascript";
-  const [language, setLanguage] = useState(defaultLanguage);
+  const [language, setLanguage] = useState(selected?.language ?? "javascript");
   const [code, setCode] = useState(selected?.starterCode ?? "");
-  const [result, setResult] = useState("Run tests to see feedback.");
+  const [result, setResult] = useState("Run sample tests to see feedback.");
+  const [resultTab, setResultTab] = useState<"cases" | "output">("cases");
   const [isPending, startTransition] = useTransition();
 
   const activeLanguage = browserLanguages.find((item) => item.id === language) ?? browserLanguages[0];
   const availableLanguages = browserLanguages.filter((item) =>
     ["javascript", "typescript", "python", "sql", "java", "cpp", "rust", "go"].includes(item.id)
   );
+  const cases = selected.testCases ?? [];
 
   function choose(challenge: Challenge) {
     const nextLanguage = challenge.language ?? "javascript";
     setSelectedId(challenge.id);
     setLanguage(nextLanguage);
     setCode(getChallengeStarter(challenge, nextLanguage));
-    setResult("Run tests to see feedback.");
+    setResult("Run sample tests to see feedback.");
+    setResultTab("cases");
   }
 
   function changeLanguage(nextLanguage: string) {
     setLanguage(nextLanguage);
     setCode(getChallengeStarter(selected, nextLanguage));
-    setResult(runnableLanguages.has(nextLanguage) ? "Run tests to see feedback." : "This language is ready for editor practice; test execution needs its browser compiler adapter.");
+    setResult(runnableLanguages.has(nextLanguage) ? "Run sample tests to see feedback." : "This language is editor-ready; live tests need its browser compiler adapter.");
+    setResultTab("cases");
   }
 
   function persist(passed: boolean, output: string) {
@@ -62,6 +64,7 @@ export function ChallengeRunner({ challenges }: { challenges: Challenge[] }) {
     if (!runnableLanguages.has(language)) {
       const output = `${activeLanguage.label} test runner is adapter-ready. Use JavaScript, TypeScript, Python, or SQL for live browser tests right now.`;
       setResult(output);
+      setResultTab("output");
       persist(false, output);
       return;
     }
@@ -74,20 +77,23 @@ export function ChallengeRunner({ challenges }: { challenges: Challenge[] }) {
           : runJavaScriptCases(selected, code, language);
 
       setResult(output);
+      setResultTab("output");
       persist(output.startsWith("PASS"), output);
     } catch (error) {
       const output = error instanceof Error ? `FAIL ${error.message}` : "FAIL tests did not pass";
       setResult(output);
+      setResultTab("output");
       persist(false, output);
     }
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">
+    <div className="overflow-hidden rounded-md border bg-card">
+      <div className="flex items-center gap-2 overflow-x-auto border-b bg-muted/50 px-3 py-2">
         {languageTabs.map((item) => (
           <Button
             key={item}
+            size="sm"
             variant={track === item ? "default" : "outline"}
             onClick={() => {
               const nextFiltered = filterChallenges(challenges, item);
@@ -100,75 +106,101 @@ export function ChallengeRunner({ challenges }: { challenges: Challenge[] }) {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <div className="space-y-3 lg:max-h-[calc(100vh-180px)] lg:overflow-auto lg:pr-2">
-          {filtered.map((challenge) => (
-            <button
-              key={challenge.id}
-              onClick={() => choose(challenge)}
-              className={`w-full rounded-md border p-4 text-left transition hover:bg-muted ${selected.id === challenge.id ? "border-primary bg-primary/10" : "bg-card"}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="font-semibold">{challenge.title}</div>
-                <Badge>{challenge.language ?? "js"}</Badge>
-              </div>
-              <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{challenge.prompt}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Badge className="bg-muted text-foreground">{challenge.difficulty}</Badge>
-                <Badge className="bg-muted text-foreground">{challenge.track ?? challenge.category}</Badge>
-                {challenge.kind === "interview" && <Badge>Interview</Badge>}
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <Card>
-            <CardContent className="space-y-5 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge className="border-primary/30 bg-primary/10 text-primary">{selected.track ?? selected.category}</Badge>
-                    <Badge>{selected.difficulty}</Badge>
+      <div className="grid min-h-[760px] lg:h-[calc(100vh-185px)] lg:min-h-[640px] lg:grid-cols-[280px_minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <aside className="border-b bg-muted/20 lg:border-b-0 lg:border-r">
+          <div className="border-b p-3">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">Question list</div>
+          </div>
+          <div className="max-h-[260px] space-y-2 overflow-auto p-3 lg:max-h-none">
+            {filtered.map((challenge, index) => (
+              <button
+                key={challenge.id}
+                onClick={() => choose(challenge)}
+                className={`w-full rounded-md border p-3 text-left transition hover:bg-muted ${selected.id === challenge.id ? "border-primary bg-primary/10" : "bg-background"}`}
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-muted-foreground">Q{index + 1}</span>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">{challenge.title}</div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <Badge className="text-[10px]">{challenge.language ?? "js"}</Badge>
+                      <Badge className="bg-muted text-[10px] text-foreground">{challenge.difficulty}</Badge>
+                    </div>
                   </div>
-                  <h2 className="mt-3 text-2xl font-semibold">{selected.title}</h2>
-                  <p className="mt-2 text-muted-foreground">{selected.prompt}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    className="h-10 rounded-md border bg-background px-3 text-sm"
-                    value={language}
-                    onChange={(event) => changeLanguage(event.target.value)}
-                  >
-                    {availableLanguages.map((item) => (
-                      <option key={item.id} value={item.id}>{item.label}</option>
-                    ))}
-                  </select>
-                  <Button onClick={runTests} disabled={isPending}>{isPending ? "Saving..." : "Run tests"}</Button>
-                </div>
-              </div>
-              <CodeEditor value={code} language={language} onChange={setCode} />
-            </CardContent>
-          </Card>
+              </button>
+            ))}
+          </div>
+        </aside>
 
-          <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-semibold">Test result</h3>
-                  <Button size="sm" onClick={runTests} disabled={isPending}>Run</Button>
+        <section className="border-b lg:border-b-0 lg:border-r">
+          <div className="h-full overflow-auto p-5">
+            <div className="flex flex-wrap gap-2">
+              <Badge className="border-primary/30 bg-primary/10 text-primary">{selected.track ?? selected.category}</Badge>
+              <Badge>{selected.kind === "interview" ? "Interview" : "Practice"}</Badge>
+              <Badge className="bg-muted text-foreground">{selected.difficulty}</Badge>
+            </div>
+            <h2 className="mt-4 text-2xl font-bold">{selected.title}</h2>
+            <p className="mt-4 leading-7 text-muted-foreground">{selected.prompt}</p>
+
+            <div className="mt-6 space-y-3">
+              <h3 className="font-semibold">Examples</h3>
+              {cases.length ? cases.slice(0, 3).map((testCase, index) => (
+                <div key={index} className="rounded-md border bg-background p-3 text-sm">
+                  <div className="font-mono text-xs text-muted-foreground">Example {index + 1}</div>
+                  <div className="mt-2 font-mono">Input: {format(testCase.input)}</div>
+                  <div className="mt-1 font-mono">Expected: {format(testCase.expected)}</div>
                 </div>
-                <pre className="mt-4 max-h-[260px] min-h-[180px] overflow-auto whitespace-pre-wrap rounded-md bg-slate-950 p-4 text-sm text-slate-100">{result}</pre>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="font-semibold">Visible tests</h3>
-                <pre className="mt-4 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border bg-muted p-4 text-sm">{selected.tests}</pre>
-              </CardContent>
-            </Card>
-          </aside>
-        </div>
+              )) : (
+                <pre className="rounded-md border bg-background p-3 text-sm">{selected.tests}</pre>
+              )}
+            </div>
+
+            <div className="mt-6 rounded-md border bg-muted/30 p-3">
+              <h3 className="font-semibold">Code contract</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Implement <span className="font-mono text-foreground">{selected.functionName ?? "solve"}</span>. Run sample tests first, then submit to save XP.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="flex min-h-[620px] flex-col lg:min-h-0">
+          <div className="flex items-center gap-2 overflow-x-auto border-b bg-background px-3 py-2">
+            <select className="h-9 rounded-md border bg-background px-3 text-sm" value={language} onChange={(event) => changeLanguage(event.target.value)}>
+              {availableLanguages.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+            </select>
+            <Button size="sm" variant="outline" onClick={() => setCode(getChallengeStarter(selected, language))}>Reset</Button>
+            <Button size="sm" onClick={runTests} disabled={isPending}>{isPending ? "Saving..." : "Run"}</Button>
+            <Button size="sm" onClick={runTests} disabled={isPending}>Submit</Button>
+          </div>
+
+          <div className="h-[360px] min-h-0 border-b lg:flex-1">
+            <CodeEditor value={code} language={language} onChange={setCode} height="100%" />
+          </div>
+
+          <div className="min-h-[250px] bg-background">
+            <div className="grid grid-cols-2 border-b text-sm">
+              <button className={`px-3 py-2 ${resultTab === "cases" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`} onClick={() => setResultTab("cases")}>Test cases</button>
+              <button className={`px-3 py-2 ${resultTab === "output" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`} onClick={() => setResultTab("output")}>Output</button>
+            </div>
+            <div className="max-h-[260px] overflow-auto p-3">
+              {resultTab === "cases" ? (
+                <div className="space-y-2">
+                  {(cases.length ? cases : [{ input: [selected.tests], expected: "See prompt" }]).map((testCase, index) => (
+                    <div key={index} className="rounded-md border bg-muted/30 p-3 text-sm">
+                      <div className="font-semibold">Case {index + 1}</div>
+                      <div className="mt-2 font-mono text-xs">Input: {format(testCase.input)}</div>
+                      <div className="mt-1 font-mono text-xs">Expected: {format(testCase.expected)}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <pre className="min-h-[180px] whitespace-pre-wrap rounded-md bg-slate-950 p-4 text-sm text-slate-100">{result}</pre>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -184,30 +216,14 @@ function getChallengeStarter(challenge: Challenge, language: string) {
   if (language === (challenge.language ?? "javascript")) return challenge.starterCode;
   const name = challenge.functionName ?? "solve";
 
-  if (language === "javascript") {
-    return `function ${name}(...args) {\n  // write your solution\n  return null;\n}\n\nmodule.exports = ${name};`;
-  }
-  if (language === "typescript") {
-    return `function ${name}(...args: unknown[]): unknown {\n  // write your solution\n  return null;\n}\n\nmodule.exports = ${name};`;
-  }
-  if (language === "python") {
-    return `def ${name}(*args):\n    # write your solution\n    return None\n`;
-  }
-  if (language === "sql") {
-    return challenge.category === "SQL" ? challenge.starterCode : "-- SQL practice is best for database challenges.\nselect 1;";
-  }
-  if (language === "java") {
-    return `class Solution {\n  public static Object ${name}(Object... args) {\n    return null;\n  }\n}`;
-  }
-  if (language === "cpp") {
-    return "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n  return 0;\n}\n";
-  }
-  if (language === "rust") {
-    return "fn main() {\n    println!(\"Implement solve here\");\n}\n";
-  }
-  if (language === "go") {
-    return "package main\n\nimport \"fmt\"\n\nfunc main() {\n  fmt.Println(\"Implement solve here\")\n}\n";
-  }
+  if (language === "javascript") return `function ${name}(...args) {\n  // write your solution\n  return null;\n}\n\nmodule.exports = ${name};`;
+  if (language === "typescript") return `function ${name}(...args: unknown[]): unknown {\n  // write your solution\n  return null;\n}\n\nmodule.exports = ${name};`;
+  if (language === "python") return `def ${name}(*args):\n    # write your solution\n    return None\n`;
+  if (language === "sql") return challenge.category === "SQL" ? challenge.starterCode : "-- SQL practice is best for database challenges.\nselect 1;";
+  if (language === "java") return `class Solution {\n  public static Object ${name}(Object... args) {\n    return null;\n  }\n}`;
+  if (language === "cpp") return "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n  return 0;\n}\n";
+  if (language === "rust") return "fn main() {\n    println!(\"Implement solve here\");\n}\n";
+  if (language === "go") return "package main\n\nimport \"fmt\"\n\nfunc main() {\n  fmt.Println(\"Implement solve here\")\n}\n";
   return challenge.starterCode;
 }
 
@@ -223,7 +239,6 @@ function runJavaScriptCases(challenge: Challenge, code: string, language: string
     const pass = deepEqual(received, testCase.expected);
     return `${pass ? "PASS" : "FAIL"} case ${index + 1}: expected ${format(testCase.expected)}, received ${format(received)}`;
   });
-
   return lines.every((line) => line.startsWith("PASS")) ? `PASS all tests\n${lines.join("\n")}` : `FAIL some tests\n${lines.join("\n")}`;
 }
 
@@ -240,7 +255,6 @@ function runSqlChecks(challenge: Challenge, code: string) {
   const pass = isTopLearners
     ? normalized.includes("name") && normalized.includes("xp") && /where .*xp\s*>=\s*500/.test(normalized) && /order by .*xp\s+desc/.test(normalized)
     : normalized.includes("lesson_id") && normalized.includes("xp_earned") && /where .*completed\s*=\s*true/.test(normalized) && /order by .*completed_at\s+desc/.test(normalized);
-
   return pass ? "PASS all SQL checks" : `FAIL SQL checks\n${challenge.tests}`;
 }
 

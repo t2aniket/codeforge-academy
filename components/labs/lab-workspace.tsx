@@ -134,6 +134,7 @@ export function LabWorkspace({
     if (definition.id === "testing") return ["Pytest: ready", "Playwright: ready", "Cypress: ready"];
     return ["Workspace mounted", "Runtime isolated", "Progress autosaved"];
   }, [definition.id]);
+  const labScene = useMemo(() => getLabScene(definition.id), [definition.id]);
 
   const activeLanguage = definition.languages.find((item) => item.id === language);
   const runtimeCapability = getRuntimeCapability(activeLanguage);
@@ -343,6 +344,16 @@ export function LabWorkspace({
               <div className="text-xs font-semibold uppercase text-muted-foreground">Next step</div>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{nextStep}</p>
             </div>
+            <div className="border-b p-3">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">{labScene.title}</div>
+              <div className="mt-3 space-y-2">
+                {labScene.items.map((item) => (
+                  <div key={item} className="rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="p-3">
               <div className="text-xs font-semibold uppercase text-muted-foreground">Guide</div>
               <div className="mt-3 space-y-2">
@@ -450,6 +461,14 @@ export function LabWorkspace({
                       ))}
                     </div>
                   </section>
+                  <section className="rounded-md border p-3">
+                    <h2 className="font-semibold">{labScene.title}</h2>
+                    <div className="mt-3 space-y-2">
+                      {labScene.items.map((item) => (
+                        <div key={item} className="rounded-md bg-muted p-2 text-sm text-muted-foreground">{item}</div>
+                      ))}
+                    </div>
+                  </section>
                 </div>
               )}
             </div>
@@ -458,4 +477,41 @@ export function LabWorkspace({
       </section>
     </div>
   );
+}
+
+function getLabScene(id: string) {
+  if (id === "docker") {
+    return {
+      title: "Container view",
+      items: ["Dockerfile -> image layers", "Image: codeforge-api:latest", "Port map: 8080 -> 8080", "Health check pending"]
+    };
+  }
+  if (id === "network") {
+    return {
+      title: "Topology",
+      items: ["PC-A -> SW1 -> R1", "R1 G0/0 up 192.168.1.1/24", "R1 G0/1 down unassigned", "Goal: 10.0.0.1/24"]
+    };
+  }
+  if (id === "linux") {
+    return {
+      title: "Filesystem",
+      items: ["/home/codeforge/workspace", "app/", "logs/api.log", "api.service"]
+    };
+  }
+  if (id === "testing") {
+    return {
+      title: "Test suite",
+      items: ["Pytest unit checks", "Playwright browser flow", "Cypress regression path", "Goal: add coverage"]
+    };
+  }
+  if (id === "sql") {
+    return {
+      title: "Database",
+      items: ["learners(name, xp)", "courses(title, category)", "progress(lesson_id, xp_earned)", "Goal: query precisely"]
+    };
+  }
+  return {
+    title: "Playground",
+    items: ["Free editor", "Run code", "Inspect output", "Save session"]
+  };
 }
