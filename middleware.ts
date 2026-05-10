@@ -1,12 +1,19 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const protectedLearningPrefixes = ["/dashboard", "/profile", "/courses", "/labs", "/playground", "/challenges"];
+
 export async function middleware(request: NextRequest) {
-  if (!request.nextUrl.pathname.startsWith("/admin")) return NextResponse.next();
+  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
+  const isProtectedLearningRoute =
+    process.env.REQUIRE_AUTH_FOR_LEARNING === "true" &&
+    protectedLearningPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
+
+  if (!isAdminRoute && !isProtectedLearningRoute) return NextResponse.next();
   if (
     process.env.NEXT_PUBLIC_SUPABASE_URL === undefined ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === undefined ||
-    process.env.ALLOW_DEMO_ADMIN === "true"
+    (isAdminRoute && process.env.ALLOW_DEMO_ADMIN === "true")
   ) {
     return NextResponse.next();
   }
@@ -42,6 +49,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (!isAdminRoute) return response;
+
   const { data: adminProfile } = await supabase
     .from("admin_profiles")
     .select("user_id")
@@ -60,5 +69,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"]
+  matcher: ["/admin/:path*", "/dashboard/:path*", "/profile/:path*", "/courses/:path*", "/labs/:path*", "/playground/:path*", "/challenges/:path*"]
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { saveLabSessionAction } from "@/app/actions/labs";
 import { CodeEditor } from "@/components/labs/code-editor";
@@ -47,6 +47,15 @@ function firstStarterFile(starter: LabStarter) {
   return Object.entries(starter.files ?? { "notes.md": "# Lab notes\n" })[0];
 }
 
+function extractVariables(code: string) {
+  const matches = Array.from(code.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g));
+  return matches.slice(0, 12).map((match) => ({
+    name: match[1],
+    value: match[2].trim(),
+    scope: "local"
+  }));
+}
+
 export function LabWorkspace({
   definition,
   starterOverride,
@@ -61,11 +70,23 @@ export function LabWorkspace({
   const starter = starterOverride ?? definition.defaultStarter;
   const initialFile = firstStarterFile(starter);
   const storageKey = `lab-session:${definition.id}:${courseId ?? "standalone"}:${lessonId ?? "standalone"}`;
+  const defaultLanguage = starter.language ?? definition.languages[0]?.id ?? "javascript";
+  const defaultVersion = definition.languages.find((item) => item.id === defaultLanguage)?.versions[0] ?? "default";
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const decorationsRef = useRef<string[]>([]);
   const [fileName, setFileName] = useState(initialFile[0]);
   const [code, setCode] = useState(initialFile[1]);
-  const [language, setLanguage] = useState(starter.language ?? (definition.id === "sql" ? "sql" : "javascript"));
-  const [output, setOutput] = useState("Output appears here after you run code or checks.");
+  const [language, setLanguage] = useState(defaultLanguage);
+  const [version, setVersion] = useState(defaultVersion);
+  const [stdout, setStdout] = useState("Output appears here after you run code or checks.");
+  const [stderr, setStderr] = useState("");
+  const [executionLog, setExecutionLog] = useState<string[]>([]);
   const [steps, setSteps] = useState<string[]>([]);
+  const [breakpoints, setBreakpoints] = useState<number[]>([]);
+  const [currentLine, setCurrentLine] = useState<number | null>(null);
+  const [variables, setVariables] = useState<Array<{ name: string; value: string; scope: string }>>([]);
+  const [watchExpression, setWatchExpression] = useState("xp");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -78,14 +99,22 @@ export function LabWorkspace({
           fileName?: string;
           code?: string;
           language?: string;
-          output?: string;
+          version?: string;
+          stdout?: string;
+          stderr?: string;
+          executionLog?: string[];
           steps?: string[];
+          breakpoints?: number[];
         };
         setFileName(parsed.fileName ?? nextFile[0]);
         setCode(parsed.code ?? nextFile[1]);
-        setLanguage(parsed.language ?? starter.language ?? (definition.id === "sql" ? "sql" : "javascript"));
-        setOutput(parsed.output ?? "Output appears here after you run code or checks.");
+        setLanguage(parsed.language ?? defaultLanguage);
+        setVersion(parsed.version ?? defaultVersion);
+        setStdout(parsed.stdout ?? "Output appears here after you run code or checks.");
+        setStderr(parsed.stderr ?? "");
+        setExecutionLog(parsed.executionLog ?? []);
         setSteps(parsed.steps ?? []);
+        setBreakpoints(parsed.breakpoints ?? []);
         return;
       } catch {
         localStorage.removeItem(storageKey);
@@ -94,10 +123,48 @@ export function LabWorkspace({
 
     setFileName(nextFile[0]);
     setCode(nextFile[1]);
-    setLanguage(starter.language ?? (definition.id === "sql" ? "sql" : "javascript"));
-    setOutput("Output appears here after you run code or checks.");
+    setLanguage(defaultLanguage);
+    setVersion(defaultVersion);
+    setStdout("Output appears here after you run code or checks.");
+    setStderr("");
+    setExecutionLog([]);
     setSteps([]);
-  }, [definition.id, starter, storageKey]);
+    setBreakpoints([]);
+  }, [definition.id, starter, storageKey, defaultLanguage, defaultVersion]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    const breakpointDecorations = breakpoints.map((line) => ({
+      range: new monaco.Range(line, 1, line, 1),
+      options: {
+        isWholeLine: true,
+        glyphMarginClassName: "bg-primary rounded-full",
+        glyphMarginHoverMessage: { value: `Breakpoint on line ${line}` }
+      }
+    }));
+    const lineDecoration = currentLine
+      ? [{
+          range: new monaco.Range(currentLine, 1, currentLine, 1),
+          options: { isWholeLine: true, className: "bg-primary/15" }
+        }]
+      : [];
+
+    decorationsRef.current = editor.deltaDecorations(decorationsRef.current, [
+      ...breakpointDecorations,
+      ...lineDecoration
+    ]);
+  }, [breakpoints, currentLine]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      saveSession("active", true);
+    }, 3000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, language, version, steps, breakpoints]);
 
   const dashboard = useMemo(() => {
     if (definition.id === "network") return ["Router R1: online", "Switch SW1: online", "G0/1: pending"];
@@ -110,32 +177,47 @@ export function LabWorkspace({
   async function runCode() {
     try {
       if (language === "python") {
-        setOutput("Loading Pyodide runtime...");
+        setStdout("Loading Pyodide runtime...");
         const pyodide = await loadBrowserPyodide();
         const result = await pyodide.runPythonAsync(code);
-        setOutput(String(result ?? "Python executed successfully."));
+        setStdout(String(result ?? "Python executed successfully."));
+        setStderr("");
       } else if (language === "sql") {
-        setOutput(definition.commands["run query"] ?? "Query executed.");
+        setStdout(definition.commands["run query"] ?? "Query executed.");
+        setStderr("");
+      } else if (["java", "dart", "cpp", "rust", "go", "ruby", "php", "kotlin", "swift"].includes(language)) {
+        setStdout(`${definition.languages.find((item) => item.id === language)?.label ?? language} ${version} adapter prepared.\nBrowser-only execution adapter is registered as simulated until the WASM runtime asset is installed.`);
+        setStderr("");
       } else {
         const logs: string[] = [];
-        const fn = new Function("console", code);
+        const executable = language === "typescript" ? code.replace(/:\s*[A-Za-z0-9_<>\[\]\|]+/g, "") : code;
+        const fn = new Function("console", executable);
         fn({ log: (...args: unknown[]) => logs.push(args.map(String).join(" ")) });
-        setOutput(logs.join("\n") || "JavaScript executed successfully.");
+        setStdout(logs.join("\n") || `${language} executed successfully.`);
+        setStderr("");
       }
+      setExecutionLog((items) => [`run ${language}@${version}`, ...items].slice(0, 8));
+      setVariables(extractVariables(code));
+      setCurrentLine(null);
       toast.success("Execution complete");
     } catch (error) {
-      setOutput(error instanceof Error ? error.message : "Execution failed");
+      setStdout("");
+      setStderr(error instanceof Error ? error.message : "Execution failed");
       toast.error("Execution failed");
     }
   }
 
-  function saveSession(status: "active" | "completed" = "active") {
+  function saveSession(status: "active" | "completed" = "active", silent = false) {
     const session = {
       fileName,
       code,
       language,
-      output,
+      version,
+      stdout,
+      stderr,
+      executionLog,
       steps,
+      breakpoints,
       savedAt: new Date().toISOString()
     };
     localStorage.setItem(storageKey, JSON.stringify(session));
@@ -149,8 +231,10 @@ export function LabWorkspace({
         terminalHistory: steps,
         status
       });
-      if (result.ok) toast.success(result.message);
-      else toast.error(result.message);
+      if (!silent) {
+        if (result.ok) toast.success(result.message);
+        else toast.error(result.message);
+      }
     });
   }
 
@@ -159,10 +243,62 @@ export function LabWorkspace({
     localStorage.removeItem(storageKey);
     setFileName(nextFile[0]);
     setCode(nextFile[1]);
-    setLanguage(starter.language ?? (definition.id === "sql" ? "sql" : "javascript"));
-    setOutput("Output appears here after you run code or checks.");
+    setLanguage(defaultLanguage);
+    setVersion(defaultVersion);
+    setStdout("Output appears here after you run code or checks.");
+    setStderr("");
+    setExecutionLog([]);
     setSteps([]);
+    setBreakpoints([]);
+    setCurrentLine(null);
     toast.success("Starter restored.");
+  }
+
+  function handleEditorMount(editor: unknown, monaco: unknown) {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    const typedEditor = editor as {
+      onMouseDown: (handler: (event: any) => void) => void;
+    };
+    typedEditor.onMouseDown((event) => {
+      const line = event.target?.position?.lineNumber;
+      const targetType = event.target?.type;
+      if (!line || targetType !== 2) return;
+      setBreakpoints((items) =>
+        items.includes(line) ? items.filter((item) => item !== line) : [...items, line].sort((a, b) => a - b)
+      );
+    });
+  }
+
+  function debugStart() {
+    const firstExecutableLine = code.split("\n").findIndex((line) => line.trim() && !line.trim().startsWith("//")) + 1;
+    setCurrentLine(firstExecutableLine || 1);
+    setVariables(extractVariables(code));
+    setExecutionLog((items) => ["debug start", ...items].slice(0, 8));
+  }
+
+  function debugStep(direction: "over" | "into" | "out" | "continue" | "pause" | "restart" | "stop") {
+    if (direction === "stop") {
+      setCurrentLine(null);
+      setExecutionLog((items) => ["debug stop", ...items].slice(0, 8));
+      return;
+    }
+    if (direction === "restart") {
+      debugStart();
+      return;
+    }
+    if (direction === "continue") {
+      const nextBreakpoint = breakpoints.find((line) => line > (currentLine ?? 0));
+      setCurrentLine(nextBreakpoint ?? null);
+      setExecutionLog((items) => ["debug continue", ...items].slice(0, 8));
+      return;
+    }
+    if (direction === "pause") {
+      setExecutionLog((items) => ["debug pause", ...items].slice(0, 8));
+      return;
+    }
+    setCurrentLine((line) => Math.min((line ?? 1) + 1, code.split("\n").length));
+    setExecutionLog((items) => [`step ${direction}`, ...items].slice(0, 8));
   }
 
   return (
@@ -175,9 +311,28 @@ export function LabWorkspace({
             <p className="mt-2 max-w-3xl text-muted-foreground">{starter.description}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setLanguage(language === "python" ? "javascript" : "python")}>
-              {language === "python" ? "Use JS" : "Use Python"}
-            </Button>
+            <select
+              className="h-10 rounded-md border bg-background px-3 text-sm"
+              value={language}
+              onChange={(event) => {
+                const nextLanguage = event.target.value;
+                setLanguage(nextLanguage);
+                setVersion(definition.languages.find((item) => item.id === nextLanguage)?.versions[0] ?? "default");
+              }}
+            >
+              {definition.languages.map((item) => (
+                <option key={item.id} value={item.id}>{item.label}</option>
+              ))}
+            </select>
+            <select
+              className="h-10 rounded-md border bg-background px-3 text-sm"
+              value={version}
+              onChange={(event) => setVersion(event.target.value)}
+            >
+              {(definition.languages.find((item) => item.id === language)?.versions ?? [version]).map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
             <Button variant="outline" onClick={resetStarter}>Reset</Button>
             <Button variant="outline" onClick={() => saveSession("active")} disabled={isPending}>
               Save session
@@ -189,7 +344,7 @@ export function LabWorkspace({
           Editing <span className="font-mono text-foreground">{fileName}</span>
           {starterOverride && <span> from linked lesson starter</span>}
         </div>
-        <CodeEditor value={code} language={language} onChange={setCode} />
+        <CodeEditor value={code} language={language} onChange={setCode} onMount={handleEditorMount} />
         <div className="grid gap-4 xl:grid-cols-2">
           <SimulatedTerminal
             commands={definition.commands}
@@ -200,13 +355,59 @@ export function LabWorkspace({
             <CardContent className="p-5">
               <h2 className="text-lg font-semibold">Runtime output</h2>
               <pre className="mt-4 min-h-[280px] whitespace-pre-wrap rounded-md bg-slate-950 p-4 text-sm text-slate-100">
-                {output}
+                {stdout}
               </pre>
+              {stderr && (
+                <pre className="mt-3 whitespace-pre-wrap rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  {stderr}
+                </pre>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
       <aside className="space-y-4">
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="text-lg font-semibold">Debug toolbar</h2>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button size="sm" onClick={runCode}>Run</Button>
+              <Button size="sm" variant="outline" onClick={debugStart}>Debug</Button>
+              <Button size="sm" variant="outline" onClick={() => debugStep("over")}>Step Over</Button>
+              <Button size="sm" variant="outline" onClick={() => debugStep("into")}>Step Into</Button>
+              <Button size="sm" variant="outline" onClick={() => debugStep("out")}>Step Out</Button>
+              <Button size="sm" variant="outline" onClick={() => debugStep("continue")}>Continue</Button>
+              <Button size="sm" variant="outline" onClick={() => debugStep("pause")}>Pause</Button>
+              <Button size="sm" variant="outline" onClick={() => debugStep("restart")}>Restart</Button>
+              <Button size="sm" variant="destructive" onClick={() => debugStep("stop")}>Stop</Button>
+            </div>
+            <div className="mt-3 text-sm text-muted-foreground">
+              Current line: {currentLine ?? "not debugging"} | Breakpoints: {breakpoints.length ? breakpoints.join(", ") : "none"}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="text-lg font-semibold">Variables and watch</h2>
+            <input
+              className="mt-3 h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={watchExpression}
+              onChange={(event) => setWatchExpression(event.target.value)}
+              placeholder="Watch expression"
+            />
+            <div className="mt-4 space-y-2">
+              {variables.length ? variables.map((variable) => (
+                <div key={variable.name} className="rounded-md border p-3 text-sm">
+                  <div className="font-mono">{variable.name}</div>
+                  <div className="text-muted-foreground">{variable.value}</div>
+                </div>
+              )) : <p className="text-sm text-muted-foreground">Run or debug to inspect simple variables.</p>}
+            </div>
+            <div className="mt-3 rounded-md bg-muted p-3 text-sm">
+              Watch: <span className="font-mono">{watchExpression}</span>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-5">
             <h2 className="text-lg font-semibold">Guided challenge</h2>
@@ -238,6 +439,11 @@ export function LabWorkspace({
             <h2 className="text-lg font-semibold">Session trace</h2>
             <div className="mt-3 text-sm text-muted-foreground">
               {steps.length ? steps.join(" -> ") : "Terminal commands will appear here."}
+            </div>
+            <div className="mt-4 space-y-1 text-xs text-muted-foreground">
+              {executionLog.map((item) => (
+                <div key={item}>{item}</div>
+              ))}
             </div>
             <Button className="mt-4 w-full" onClick={() => saveSession("completed")} disabled={isPending}>
               Mark lab practiced

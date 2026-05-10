@@ -100,6 +100,7 @@ create table if not exists public.challenge_submissions (
   challenge_id uuid references public.challenges(id) on delete cascade,
   code text not null,
   passed boolean not null default false,
+  xp_earned integer not null default 0,
   output text,
   created_at timestamptz not null default now()
 );

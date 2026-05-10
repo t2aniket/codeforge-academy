@@ -54,6 +54,28 @@ export async function getLessonNote(lessonId: string) {
 
 export async function getChallenges() {
   noStore();
+  if (hasSupabaseEnv()) {
+    const supabase = createClient();
+    const { data, error } = await supabase!
+      .from("challenges")
+      .select("*")
+      .eq("published", true)
+      .order("created_at", { ascending: false });
+
+    if (!error && data?.length) {
+      return data.map((challenge) => ({
+        id: challenge.id,
+        title: challenge.title,
+        slug: challenge.slug,
+        difficulty: challenge.difficulty,
+        category: challenge.category,
+        prompt: challenge.prompt,
+        starterCode: challenge.starter_code,
+        tests: challenge.tests
+      }));
+    }
+  }
+
   return challenges;
 }
 
@@ -66,17 +88,24 @@ export async function getDashboard() {
     const { data: userData } = await supabase!.auth.getUser();
 
     if (userData.user) {
-      const [{ data: progressRows }, { data: labRows }] = await Promise.all([
+      const [{ data: progressRows }, { data: labRows }, { data: challengeRows }] = await Promise.all([
         supabase!
           .from("user_progress")
           .select("lesson_id,xp_earned,completed_at")
           .eq("user_id", userData.user.id)
           .eq("completed", true),
-        supabase!.from("lab_sessions").select("lab").eq("user_id", userData.user.id)
+        supabase!.from("lab_sessions").select("lab").eq("user_id", userData.user.id),
+        supabase!
+          .from("challenge_submissions")
+          .select("challenge_id,xp_earned,created_at")
+          .eq("user_id", userData.user.id)
+          .eq("passed", true)
       ]);
 
       const completedLessons = (progressRows ?? []).map((row) => row.lesson_id as string);
-      const xp = (progressRows ?? []).reduce((sum, row) => sum + Number(row.xp_earned ?? 0), 0);
+      const lessonXp = (progressRows ?? []).reduce((sum, row) => sum + Number(row.xp_earned ?? 0), 0);
+      const challengeXp = (challengeRows ?? []).reduce((sum, row) => sum + Number(row.xp_earned ?? 0), 0);
+      const xp = lessonXp + challengeXp;
       const practicedLabs = Array.from(new Set((labRows ?? []).map((row) => row.lab as never)));
       const streak = calculateStreak((progressRows ?? []).map((row) => row.completed_at as string | null));
 

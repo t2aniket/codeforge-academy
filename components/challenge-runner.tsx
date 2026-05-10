@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { saveChallengeSubmissionAction } from "@/app/actions/challenges";
 import { CodeEditor } from "@/components/labs/code-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,7 @@ export function ChallengeRunner({ challenges }: { challenges: Challenge[] }) {
   const [selected, setSelected] = useState(challenges[0]);
   const [code, setCode] = useState(challenges[0]?.starterCode ?? "");
   const [result, setResult] = useState("Run tests to see feedback.");
+  const [isPending, startTransition] = useTransition();
 
   function choose(challenge: Challenge) {
     setSelected(challenge);
@@ -18,11 +21,27 @@ export function ChallengeRunner({ challenges }: { challenges: Challenge[] }) {
     setResult("Run tests to see feedback.");
   }
 
+  function persist(passed: boolean, output: string) {
+    startTransition(async () => {
+      const response = await saveChallengeSubmissionAction({
+        challengeId: selected.id,
+        code,
+        passed,
+        output,
+        xp: selected.difficulty === "Advanced" ? 220 : selected.difficulty === "Intermediate" ? 160 : 100
+      });
+      if (response.ok) toast.success(response.message);
+      else toast.error(response.message);
+    });
+  }
+
   function runTests() {
     try {
       if (selected.category === "SQL") {
         const pass = /where\s+xp\s*>=\s*500/i.test(code) && /order\s+by\s+xp\s+desc/i.test(code);
-        setResult(pass ? "PASS all SQL checks" : "FAIL expected xp filter and descending order");
+        const output = pass ? "PASS all SQL checks" : "FAIL expected xp filter and descending order";
+        setResult(output);
+        persist(pass, output);
         return;
       }
       const module = { exports: undefined as unknown };
@@ -35,8 +54,11 @@ export function ChallengeRunner({ challenges }: { challenges: Challenge[] }) {
       });
       new Function("fn", "expect", selected.tests)(fn, expect);
       setResult("PASS all tests");
+      persist(true, "PASS all tests");
     } catch (error) {
-      setResult(error instanceof Error ? `FAIL ${error.message}` : "FAIL tests did not pass");
+      const output = error instanceof Error ? `FAIL ${error.message}` : "FAIL tests did not pass";
+      setResult(output);
+      persist(false, output);
     }
   }
 
@@ -64,7 +86,7 @@ export function ChallengeRunner({ challenges }: { challenges: Challenge[] }) {
               <h2 className="text-2xl font-semibold">{selected.title}</h2>
               <p className="mt-2 text-muted-foreground">{selected.prompt}</p>
             </div>
-            <Button onClick={runTests}>Run tests</Button>
+            <Button onClick={runTests} disabled={isPending}>{isPending ? "Saving..." : "Run tests"}</Button>
           </div>
           <CodeEditor value={code} language={selected.category === "SQL" ? "sql" : "javascript"} onChange={setCode} />
           <div className="grid gap-4 md:grid-cols-2">

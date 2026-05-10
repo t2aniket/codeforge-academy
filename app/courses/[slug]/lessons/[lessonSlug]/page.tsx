@@ -46,13 +46,20 @@ export default async function LessonPage({ params }: { params: { slug: string; l
       </article>
       <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
         {lesson.lab && (
-          <Card>
+          <Card className="border-primary/40 bg-primary/5">
             <CardContent className="p-6">
-              <h2 className="text-xl font-semibold">Practice environment</h2>
+              <Badge className="border-primary/30 bg-primary/10 text-primary">Linked lab</Badge>
+              <h2 className="mt-3 text-2xl font-semibold">Open Lab</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{lesson.lab.description}</p>
-              <Button asChild className="mt-5 w-full">
+              <div className="mt-4 rounded-md border bg-background p-3 text-sm">
+                <div className="font-medium">{lesson.lab.title}</div>
+                <div className="mt-1 text-muted-foreground">
+                  Language: {lesson.lab.language ?? "lab default"} | Starter files: {Object.keys(lesson.lab.files ?? {}).length || 1}
+                </div>
+              </div>
+              <Button asChild className="mt-5 h-12 w-full text-base">
                 <Link href={`/labs/${lesson.lab.lab}?course=${course.slug}&lesson=${lesson.slug}`}>
-                  Open in Lab
+                  Open Lab
                 </Link>
               </Button>
             </CardContent>

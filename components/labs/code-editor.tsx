@@ -10,11 +10,13 @@ const Monaco = dynamic(() => import("@monaco-editor/react"), {
 export function CodeEditor({
   value,
   language,
-  onChange
+  onChange,
+  onMount
 }: {
   value: string;
   language: string;
   onChange: (value: string) => void;
+  onMount?: (editor: unknown, monaco: unknown) => void;
 }) {
   return (
     <div className="overflow-hidden rounded-md border">
@@ -25,6 +27,7 @@ export function CodeEditor({
         value={value}
         options={{ minimap: { enabled: false }, fontSize: 14, padding: { top: 16 } }}
         onChange={(next) => onChange(next ?? "")}
+        onMount={onMount}
       />
     </div>
   );
