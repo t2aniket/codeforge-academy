@@ -38,6 +38,22 @@ values ('YOUR_AUTH_USER_ID', 'owner');
 
 Without Supabase env vars, the app runs in demo mode using `lib/seed-data.ts`. For a real public deployment, set `ALLOW_DEMO_ADMIN=false`, configure Supabase Auth, and add only your account to `admin_profiles`.
 
+## Recommended test accounts
+
+Create these in Supabase Auth for local testing. Do not reuse these passwords in production.
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Owner/Admin | `admin@codeforge.local` | `ChangeMe!Admin123` |
+| Learner | `learner@codeforge.local` | `ChangeMe!Learner123` |
+
+After creating the admin user, copy its Auth user id and insert it into `admin_profiles`:
+
+```sql
+insert into public.admin_profiles (user_id, role)
+values ('ADMIN_AUTH_USER_ID', 'owner');
+```
+
 ## Content model
 
 The core tables are:

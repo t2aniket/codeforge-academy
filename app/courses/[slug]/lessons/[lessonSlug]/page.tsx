@@ -5,11 +5,12 @@ import { MarkdownViewer } from "@/components/markdown-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getLesson } from "@/lib/data";
+import { getLesson, getLessonNote } from "@/lib/data";
 
 export default async function LessonPage({ params }: { params: { slug: string; lessonSlug: string } }) {
   const { course, lesson } = await getLesson(params.slug, params.lessonSlug);
   if (!course || !lesson) notFound();
+  const initialNote = await getLessonNote(lesson.id);
   const lessons = course.modules.flatMap((module) => module.lessons);
 
   return (
@@ -64,7 +65,7 @@ export default async function LessonPage({ params }: { params: { slug: string; l
             </CardContent>
           </Card>
         )}
-        <LessonActions lessonId={lesson.id} />
+        <LessonActions courseId={course.id} lessonId={lesson.id} initialNote={initialNote} />
       </aside>
     </div>
   );
